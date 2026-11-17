@@ -819,11 +819,88 @@ function hl(src, lang) {
     source: ["open this site's GitHub repo", () => { out(`<a href="${esc(R.repo)}" target="_blank" rel="noopener">${esc(R.repo)}</a>`); window.open(R.repo, "_blank", "noopener"); }],
     pdf: ["print / save as PDF", () => window.print()],
     theme: ["toggle light / dark page theme", () => document.getElementById("themeBtn").click()],
+    games: ["a few small games", () => { Object.entries(GAMES).forEach(([k, [d]]) => out(`${h(k.padEnd(12))}${dim(d)}`)); out(dim("Type q to leave a game.")); }],
     clear: ["clear the screen", () => { body.innerHTML = ""; }],
     exit: ["back to the demo", () => start(0)]
   };
+
+  /* Games: a game sets `mode`, which takes over input until it ends or the player types q */
+  let mode = null;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const ok = t => `<span class="t-ok">${esc(t)}</span>`, bad = t => `<span class="t-err">${esc(t)}</span>`;
+  const SIGNINS = [
+    { e: "a.smith · Okta dashboard · Wichita, KS · managed laptop · push approved", a: "allow", why: "Known device, usual location, MFA satisfied." },
+    { e: "a.smith · VPN · Wichita, KS at 08:02, then Lagos at 08:19", a: "block", why: "Impossible travel: 7,000 miles in 17 minutes." },
+    { e: "svc-backup · interactive browser sign-in · Outlook on the web", a: "block", why: "Service accounts shouldn't sign in interactively, let alone read mail." },
+    { e: "j.doe · 14 MFA pushes denied in 3 minutes, then 1 approved", a: "block", why: "Classic MFA fatigue. That approval was a tired thumb, not j.doe." },
+    { e: "m.lee · Azure portal · Reston, VA · compliant device · FIDO2 key", a: "allow", why: "Phishing-resistant MFA on a compliant device. Textbook." },
+    { e: "former employee (disabled yesterday) · token refresh from a mail app", a: "block", why: "Disabled isn't done: revoke the sessions and refresh tokens too." },
+    { e: "r.patel · new phone enrolled for MFA · same city · after help-desk ID check", a: "allow", why: "Verified re-enrollment through the proper process." },
+    { e: "k.nguyen · IMAP with basic auth · unfamiliar ISP", a: "block", why: "Legacy auth skips MFA entirely. It should be blocked by policy anyway." },
+    { e: "admin-tgrant · privileged role activated · personal, unmanaged laptop", a: "block", why: "Privileged access belongs on managed, hardened devices only." },
+    { e: "t.brown · 9:14 PM · usual city · managed laptop · MFA passed", a: "allow", why: "After hours on its own isn't suspicious. People work late." },
+    { e: "contractor · consents to 'Free PDF Converter' requesting Mail.ReadWrite", a: "block", why: "Illicit consent grant: an app asking for the mailbox, not the PDF." },
+    { e: "l.garcia · Denver · travel request on file · compliant phone · MFA passed", a: "allow", why: "Unusual location, but expected and everything else checks out." }
+  ];
+  const FORTUNES = [
+    "Least privilege is a journey, not a group membership.",
+    "Every 'temporary' exception has a birthday. Go check on it.",
+    "If it isn't logged, it didn't happen. If it's logged twice, it happened at 2 a.m.",
+    "The best runbook is the one nobody has to open.",
+    "Automate the boring 95%. Respect the weird 5%.",
+    "A service account whose password never expires is just a time capsule.",
+    "Somewhere, a spreadsheet is the real system of record.",
+    "Disabling the account is step one. Revoking the sessions is step one-and-a-half.",
+    "Change freeze: the calmest week of the year, right up until it isn't.",
+    "The fastest way to find an undocumented dependency is to turn something off."
+  ];
+  const GAMES = {
+    triage: ["allow or block? 5 sign-in events", () => {
+      const deck = [...SIGNINS].sort(() => Math.random() - .5).slice(0, 5); let i = 0, score = 0;
+      const ask = () => { out(""); out(`${h(`Event ${i + 1}/5`)}  ${esc(deck[i].e)}`); out(dim("allow or block? (a/b)")); };
+      out(dim("You're on shift. Allow or block each sign-in.")); ask();
+      mode = { prompt: "a/b> ", handle: raw => {
+        const v = raw.toLowerCase(), ans = /^a(llow)?$/.test(v) ? "allow" : /^(b(lock)?|deny|d)$/.test(v) ? "block" : null;
+        if (!ans) return out(dim("Answer allow or block (a/b), or q to quit."));
+        const right = ans === deck[i].a; if (right) score++;
+        out(`${right ? ok("✓ correct") : bad(`✗ it was ${deck[i].a}`)}  ${esc(deck[i].why)}`);
+        if (++i < deck.length) return ask();
+        out(""); out(h(`Score: ${score}/5  ${["Who gave you prod access?", "Rough shift.", "Getting there.", "Solid analyst.", "Sharp eyes.", "SOC lead material."][score]}`));
+        mode = null;
+      } };
+    }],
+    guess: ["guess the number, 1-100", () => {
+      const n = 1 + Math.floor(Math.random() * 100); let tries = 0;
+      out(dim("I'm thinking of a number from 1 to 100. You get 7 guesses."));
+      mode = { prompt: "guess> ", handle: raw => {
+        const g = Number(raw); if (!Number.isInteger(g) || g < 1 || g > 100) return out(dim("A whole number from 1 to 100, please."));
+        tries++;
+        if (g === n) { out(ok(`✓ ${n} in ${tries} ${tries === 1 ? "guess. Suspicious." : "guesses."}`)); mode = null; return; }
+        if (tries >= 7) { out(bad(`✗ Out of guesses. It was ${n}.`)); mode = null; return; }
+        out(`${g < n ? "Higher" : "Lower"}  ${dim(`${7 - tries} left`)}`);
+      } };
+    }],
+    rps: ["rock, paper, scissors: rps <move>", a => {
+      const moves = ["rock", "paper", "scissors"], me = pick(moves), arg = (a[0] || "").toLowerCase();
+      const you = arg ? moves.find(m => m.startsWith(arg)) : null;
+      if (!you) return out(dim("Usage: rps rock | paper | scissors"));
+      const r = you === me ? 0 : (moves.indexOf(you) - moves.indexOf(me) + 3) % 3 === 1 ? 1 : -1;
+      out(`You: ${esc(you)}  Me: ${esc(me)}  ${r > 0 ? ok("You win.") : r < 0 ? bad("I win.") : dim("Draw.")}`);
+    }],
+    roll: ["roll dice: roll 2d6", a => {
+      const m = /^(\d{0,2})d(\d{1,4})$/i.exec(a[0] || "1d6"); if (!m) return out(dim("Usage: roll 2d6"));
+      const n = Math.min(+m[1] || 1, 20), sides = Math.max(+m[2], 2), rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * sides));
+      out(`${esc(rolls.join(" + "))}${n > 1 ? ` = ${h(String(rolls.reduce((x, y) => x + y, 0)))}` : ""}`);
+    }],
+    coin: ["flip a coin", () => out(h(Math.random() < .5 ? "Heads" : "Tails"))],
+    fortune: ["a fortune for the on-call engineer", () => out(esc(pick(FORTUNES)))]
+  };
+  const EGGS = {   // unlisted
+    sudo: () => out(`sudo: elevation requires an approved PIM request. ${dim(`Request #${1000 + Math.floor(Math.random() * 9000)} is pending approval.`)}`),
+    rm: () => out("rm: this shell is read-only. Nice try, though.")
+  };
   const prompt = () => {
-    const row = line(`<span class="t-prompt">$ </span>`, "", "");
+    const row = line(`<span class="t-prompt">${esc(mode ? mode.prompt : "$ ")}</span>`, "", "");
     row.style.display = "flex";
     const inp = document.createElement("input");
     Object.assign(inp, { className: "t-in", type: "text", autocomplete: "off", spellcheck: false });
@@ -836,10 +913,10 @@ function hl(src, lang) {
         hi = Math.max(0, Math.min(hist.length, hi + (e.key === "ArrowUp" ? -1 : 1)));
         inp.value = hist[hi] || ""; return;
       }
-      if (e.key === "Tab" && inp.value.trim()) {
+      if (e.key === "Tab" && inp.value.trim() && !mode) {
         e.preventDefault();
         const [c, ...rest] = inp.value.split(" ");
-        const pool = rest.length ? Object.keys(files) : Object.keys(CMDS), q = rest.length ? rest.join(" ") : c;
+        const pool = rest.length ? Object.keys(files) : [...Object.keys(CMDS), ...Object.keys(GAMES)], q = rest.length ? rest.join(" ") : c;
         const m = pool.filter(k => k.startsWith(q));
         let pre = m[0] || ""; for (const k of m) while (!k.startsWith(pre)) pre = pre.slice(0, -1);
         if (m.length === 1) inp.value = rest.length ? `${c} ${m[0]}` : m[0] + " ";
@@ -851,9 +928,16 @@ function hl(src, lang) {
       const raw = inp.value.trim(); row.replaceChildren(document.createTextNode(inp.value));
       if (raw) { hist.push(raw); hi = hist.length; }
       const [cmd = "", ...args] = raw.split(/\s+/), name = cmd.toLowerCase();
+      if (mode) {
+        if (/^(q|quit|exit)$/.test(name)) { mode = null; out(dim("Left the game.")); }
+        else if (raw) mode.handle(raw);
+        prompt(); body.scrollTop = body.scrollHeight; return;
+      }
       if (name) {
-        const c = CMDS[name];
-        if (c) c[1](args); else out(`<span class="t-err">${esc(cmd)}: command not found</span> ${dim("(try help)")}`);
+        const c = CMDS[name] || GAMES[name];
+        if (c) c[1](args);
+        else if (EGGS[name]) EGGS[name](args);
+        else out(`<span class="t-err">${esc(cmd)}: command not found</span> ${dim("(try help)")}`);
       }
       if (name === "exit") return;
       prompt(); body.scrollTop = body.scrollHeight;
@@ -861,7 +945,7 @@ function hl(src, lang) {
     return inp;
   };
   const shell = () => {
-    run++;                                   // cancels the demo loop
+    run++; mode = null;                      // cancels the demo loop and any game
     paused = false; pauseBtn.textContent = "❚❚"; pauseBtn.setAttribute("aria-label", "Pause animation");
     tabs.forEach(t => t.classList.remove("on")); shellTab.classList.add("on");
     pauseBtn.hidden = true; body.classList.add("live"); body.innerHTML = "";
