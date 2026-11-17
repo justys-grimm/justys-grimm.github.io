@@ -17,19 +17,22 @@
   --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f0f2f5; --text:#14171c; --muted:#5b6472;
   --line:#e2e5ea; --accent:#2563eb; --accent-soft:#e6eefc; --accent-text:#1d4ed8;
   --shadow:0 1px 2px rgba(16,24,40,.04),0 4px 16px rgba(16,24,40,.06);
+  --dot:100,116,139; --dot-a:.26;
   --radius:14px; --mono:"JetBrains Mono",ui-monospace,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0c0f14; --surface:#141922; --surface-2:#1b212c; --text:#e7eaf0; --muted:#97a1b2;
-    --line:#252c38; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
+    --bg:#071127; --surface:#0d1830; --surface-2:#13203b; --text:#e7eaf0; --muted:#97a1b2;
+    --line:#1f2c47; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --dot:120,140,180; --dot-a:.38;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0c0f14; --surface:#141922; --surface-2:#1b212c; --text:#e7eaf0; --muted:#97a1b2;
-  --line:#252c38; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
+  --bg:#071127; --surface:#0d1830; --surface-2:#13203b; --text:#e7eaf0; --muted:#97a1b2;
+  --line:#1f2c47; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --dot:120,140,180; --dot-a:.38;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:80px}
@@ -161,6 +164,10 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .cred b{display:block;line-height:1.3}
 .cred span{color:var(--muted);font-size:14px}
 
+/* Dot-matrix background */
+#dots{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
+main,footer{position:relative;z-index:1}
+
 footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
 
 /* Reveal */
@@ -199,7 +206,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   html{scroll-padding:0}
   body{font-size:9.6pt;line-height:1.33;background:#fff;color:var(--text)}
-  .topbar,footer,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
+  .topbar,footer,#dots,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
   main{display:block;max-width:none;padding:0}
   .cols,.col-main,.col-side{display:block;position:static}
   .module{opacity:1!important;transform:none!important;box-shadow:none;border:0;border-radius:0;padding:0;margin:0 0 9pt;background:none}
@@ -258,6 +265,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
 </style>
 </head>
 <body>
+<canvas id="dots" aria-hidden="true"></canvas>
 
 <header class="topbar">
   <div class="topbar-inner">
@@ -677,6 +685,62 @@ function hl(src, lang) {
   };
   if (reduce) pauseBtn.hidden = true;
   start(0);
+})();
+/* Dot-matrix background: 14px grid, sine shimmer, pointer push + damped spring return */
+(() => {
+  const cv = document.getElementById("dots"), ctx = cv.getContext("2d");
+  const GAP = 14, R = 155, PUSH = 20, EASE = 0.10, DRAG = 0.45, still = reduce;
+  let W = 0, H = 0, dpr = 1, dots = [], bg = "#071127", rgb = "120,140,180", base = .38, raf = 0;
+  const ptr = { x: -1e4, y: -1e4, energy: 0 };
+  const readTheme = () => {
+    const cs = getComputedStyle(root);
+    bg = cs.getPropertyValue("--bg").trim() || bg;
+    rgb = cs.getPropertyValue("--dot").trim() || rgb;
+    base = parseFloat(cs.getPropertyValue("--dot-a")) || base;
+  };
+  const build = () => {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dots = [];
+    const ox = (W % GAP) / 2 + GAP / 2, oy = (H % GAP) / 2 + GAP / 2;
+    for (let y = oy; y < H; y += GAP) for (let x = ox; x < W; x += GAP)
+      dots.push({ hx: x, hy: y, x, y, vx: 0, vy: 0, ph: (x + y) * 0.018 + Math.random() * 1.2 });
+  };
+  const draw = t => {
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = `rgb(${rgb})`;
+    const time = t * 0.0011, active = ptr.energy > 0.01;
+    for (const d of dots) {
+      if (!still) {
+        if (active) {
+          const dx = d.x - ptr.x, dy = d.y - ptr.y, dist = Math.hypot(dx, dy);
+          if (dist < R && dist > 0.01) {
+            const f = (1 - dist / R) * PUSH * 0.05 * ptr.energy;
+            d.vx += dx / dist * f; d.vy += dy / dist * f;
+          }
+        }
+        d.vx = (d.vx + (d.hx - d.x) * EASE) * (1 - DRAG);
+        d.vy = (d.vy + (d.hy - d.y) * EASE) * (1 - DRAG);
+        d.x += d.vx; d.y += d.vy;
+      }
+      ctx.globalAlpha = still ? base : base * (0.72 + 0.28 * Math.sin(time + d.ph));
+      ctx.fillRect(d.x - 0.8, d.y - 0.8, 1.6, 1.6);
+    }
+    ctx.globalAlpha = 1;
+    ptr.energy *= 0.92;
+  };
+  const loop = t => { draw(t); raf = document.hidden ? 0 : requestAnimationFrame(loop); };
+  const frame = () => still ? draw(0) : (raf || (raf = requestAnimationFrame(loop)));
+  addEventListener("pointermove", e => { ptr.x = e.clientX; ptr.y = e.clientY; ptr.energy = 1; }, { passive: true });
+  addEventListener("pointerleave", () => { ptr.energy = 0; });
+  let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { build(); if (still) draw(0); }, 120); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) frame(); });
+  const retheme = () => { readTheme(); if (still) draw(0); };
+  new MutationObserver(retheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
+  readTheme(); build(); frame();
 })();
 </script>
 </body>
