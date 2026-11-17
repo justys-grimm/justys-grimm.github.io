@@ -708,35 +708,58 @@ function hl(src, lang) {
     for (let y = oy; y < H; y += GAP) for (let x = ox; x < W; x += GAP)
       dots.push({ hx: x, hy: y, x, y, vx: 0, vy: 0, ph: (x + y) * 0.018 + Math.random() * 1.2 });
   };
-  const draw = t => {
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = `rgb(${rgb})`;
-    const time = t * 0.0011, active = ptr.energy > 0.01;
+  // Physics runs in fixed 1/120 s steps so motion is identical at 60, 144 or 300 Hz
+  const STEP = 1000 / 120, LEVELS = 8, buckets = Array.from({ length: LEVELS }, () => []);
+  const physics = () => {
+    const active = ptr.energy > 0.01;
     for (const d of dots) {
-      if (!still) {
-        if (active) {
-          const dx = d.x - ptr.x, dy = d.y - ptr.y, dist = Math.hypot(dx, dy);
-          if (dist < R && dist > 0.01) {
-            const f = (1 - dist / R) * PUSH * 0.05 * ptr.energy;
-            d.vx += dx / dist * f; d.vy += dy / dist * f;
-          }
+      if (active) {
+        const dx = d.x - ptr.x, dy = d.y - ptr.y, dist = Math.hypot(dx, dy);
+        if (dist < R && dist > 0.01) {
+          const f = (1 - dist / R) * PUSH * 0.05 * ptr.energy;
+          d.vx += dx / dist * f; d.vy += dy / dist * f;
         }
-        d.vx = (d.vx + (d.hx - d.x) * EASE) * (1 - DRAG);
-        d.vy = (d.vy + (d.hy - d.y) * EASE) * (1 - DRAG);
-        d.x += d.vx; d.y += d.vy;
       }
-      ctx.globalAlpha = still ? base : base * (0.72 + 0.28 * Math.sin(time + d.ph));
-      ctx.fillRect(d.x - 0.8, d.y - 0.8, 1.6, 1.6);
+      d.vx = (d.vx + (d.hx - d.x) * EASE) * (1 - DRAG);
+      d.vy = (d.vy + (d.hy - d.y) * EASE) * (1 - DRAG);
+      d.x += d.vx; d.y += d.vy;
     }
-    ctx.globalAlpha = 1;
     ptr.energy *= 0.92;
   };
-  const loop = t => { draw(t); raf = document.hidden ? 0 : requestAnimationFrame(loop); };
+  // Batched draw: dots grouped into 8 brightness levels, one fill per level (8 draw calls, not ~19k)
+  const draw = t => {
+    ctx.globalAlpha = 1; ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = `rgb(${rgb})`;
+    const time = t * 0.0011;
+    for (const b of buckets) b.length = 0;
+    for (const d of dots) {
+      const s = still ? 1 : 0.5 + 0.5 * Math.sin(time + d.ph);   // 0..1
+      buckets[Math.min(LEVELS - 1, (s * LEVELS) | 0)].push(d);
+    }
+    for (let i = 0; i < LEVELS; i++) {
+      const b = buckets[i]; if (!b.length) continue;
+      ctx.globalAlpha = still ? base : base * (0.44 + 0.56 * (i + 0.5) / LEVELS);
+      ctx.beginPath();
+      for (const d of b) ctx.rect(d.x - 0.8, d.y - 0.8, 1.6, 1.6);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+  let last = 0, acc = 0, next = 0;
+  const loop = t => {
+    raf = document.hidden ? 0 : requestAnimationFrame(loop);
+    if (!last) last = next = t;
+    if (t < next - 0.5) return;                      // cap rendering at 120 fps (deadline-based, so 144 Hz still gets 120)
+    next = t - next > STEP ? t + STEP : next + STEP;
+    acc = Math.min(acc + (t - last), STEP * 6); last = t;
+    while (acc >= STEP) { physics(); acc -= STEP; }
+    draw(t);
+  };
   const frame = () => still ? draw(0) : (raf || (raf = requestAnimationFrame(loop)));
   addEventListener("pointermove", e => { ptr.x = e.clientX; ptr.y = e.clientY; ptr.energy = 1; }, { passive: true });
   addEventListener("pointerleave", () => { ptr.energy = 0; });
   let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { build(); if (still) draw(0); }, 120); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) frame(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { last = 0; frame(); } });
   const retheme = () => { readTheme(); if (still) draw(0); };
   new MutationObserver(retheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
