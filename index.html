@@ -201,6 +201,17 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .term-body a{color:#79c0ff}
 .term-note button{font:inherit;color:var(--accent-text);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 
+/* Fortune of the day */
+.fortune{position:fixed;right:20px;bottom:20px;z-index:40;width:min(340px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:14px 40px 14px 16px;opacity:0;transform:translateY(12px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+.fortune.show{opacity:1;transform:none;pointer-events:auto}
+.fortune p{margin:0}
+.fortune .f-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-text);margin-bottom:4px}
+.fortune .f-text{font-size:14px;line-height:1.5}
+.fortune button{position:absolute;top:8px;right:8px;width:26px;height:26px;border:0;border-radius:7px;background:none;color:var(--muted);font-size:18px;line-height:1;cursor:pointer}
+.fortune button:hover{background:var(--surface-2);color:var(--text)}
+@media (max-width:640px){.fortune{right:16px;bottom:16px}}
+@media (prefers-reduced-motion:reduce){.fortune{transition:none}}
+
 /* Case-study links */
 .case-link{display:inline-flex;align-items:center;gap:6px;margin:12px 0 2px;font-size:14px;font-weight:600;padding:6px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2)}
 .case-link:hover{border-color:var(--accent);text-decoration:none}
@@ -260,7 +271,7 @@ footer a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
   html{scroll-padding:0}
   *,*::before,*::after{transition:none!important;animation:none!important}
   body{font-size:9.6pt;line-height:1.33;background:#fff;color:var(--text)}
-  .topbar,footer,#dots,.cmdk,.skip,.case-link,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
+  .topbar,footer,#dots,.cmdk,.skip,.fortune,.case-link,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
   main{display:block;max-width:none;padding:0}
   .cols,.col-main,.col-side{display:block;position:static}
   .module{opacity:1!important;transform:none!important;box-shadow:none;border:0;border-radius:0;padding:0;margin:0 0 9pt;background:none}
@@ -348,6 +359,11 @@ footer a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
   </div>
 </div>
 <footer id="footer"></footer>
+<aside class="fortune" id="fortune" aria-label="Fortune of the day" hidden>
+  <p class="f-label">Fortune of the day</p>
+  <p class="f-text" id="fortuneText"></p>
+  <button type="button" id="fortuneClose" aria-label="Dismiss until tomorrow">×</button>
+</aside>
 
 <script>
 /* ============================================================
@@ -846,18 +862,6 @@ function hl(src, lang) {
     { e: "contractor · consents to 'Free PDF Converter' requesting Mail.ReadWrite", a: "block", why: "Illicit consent grant: an app asking for the mailbox, not the PDF." },
     { e: "l.garcia · Denver · travel request on file · compliant phone · MFA passed", a: "allow", why: "Unusual location, but expected and everything else checks out." }
   ];
-  const FORTUNES = [
-    "Least privilege is a journey, not a group membership.",
-    "Every 'temporary' exception has a birthday. Go check on it.",
-    "If it isn't logged, it didn't happen. If it's logged twice, it happened at 2 a.m.",
-    "The best runbook is the one nobody has to open.",
-    "Automate the boring 95%. Respect the weird 5%.",
-    "A service account whose password never expires is just a time capsule.",
-    "Somewhere, a spreadsheet is the real system of record.",
-    "Disabling the account is step one. Revoking the sessions is step one-and-a-half.",
-    "Change freeze: the calmest week of the year, right up until it isn't.",
-    "The fastest way to find an undocumented dependency is to turn something off."
-  ];
   const WORDS = ["TOKEN","ADMIN","AUDIT","PROXY","SCOPE","AZURE","GRANT","ROUTE","CACHE","QUEUE","PATCH","SHELL",
     "AGENT","CLAIM","GROUP","LOGIN","NONCE","ALERT","BLOCK","TRUST","VAULT","RELAY","REALM","FIELD","BATCH","ASSET",
     "PHISH","SPOOF","PIVOT","CLOUD","DEBUG","MERGE","REGEX","ARRAY","CRASH","CRYPT","PORTS"]
@@ -923,8 +927,7 @@ function hl(src, lang) {
       const n = Math.min(+m[1] || 1, 20), sides = Math.max(+m[2], 2), rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * sides));
       out(`${esc(rolls.join(" + "))}${n > 1 ? ` = ${h(String(rolls.reduce((x, y) => x + y, 0)))}` : ""}`);
     }],
-    coin: ["flip a coin", () => out(h(Math.random() < .5 ? "Heads" : "Tails"))],
-    fortune: ["a fortune for the on-call engineer", () => out(esc(pick(FORTUNES)))]
+    coin: ["flip a coin", () => out(h(Math.random() < .5 ? "Heads" : "Tails"))]
   };
   const EGGS = {   // unlisted
     sudo: () => out(`sudo: elevation requires an approved PIM request. ${dim(`Request #${1000 + Math.floor(Math.random() * 9000)} is pending approval.`)}`),
@@ -991,6 +994,36 @@ function hl(src, lang) {
     const i = body.querySelector(".t-in"); if (i) i.focus({ preventScroll: true });
   });
   start(0);
+})();
+
+const FORTUNES = [
+  "Least privilege is a journey, not a group membership.",
+  "Every 'temporary' exception has a birthday. Go check on it.",
+  "If it isn't logged, it didn't happen. If it's logged twice, it happened at 2 a.m.",
+  "The best runbook is the one nobody has to open.",
+  "Automate the boring 95%. Respect the weird 5%.",
+  "A service account whose password never expires is just a time capsule.",
+  "Somewhere, a spreadsheet is the real system of record.",
+  "Disabling the account is step one. Revoking the sessions is step one-and-a-half.",
+  "Change freeze: the calmest week of the year, right up until it isn't.",
+  "The fastest way to find an undocumented dependency is to turn something off."
+];
+
+/* Fortune of the day: same one for everyone on a given (local) day; dismissing hides it until tomorrow */
+(() => {
+  const box = document.getElementById("fortune"), d = new Date();
+  const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  let dismissed = null; try { dismissed = localStorage.getItem("fortuneDismissed"); } catch (e) {}
+  if (dismissed === today) return;
+  const day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
+  document.getElementById("fortuneText").textContent = FORTUNES[(day + d.getFullYear()) % FORTUNES.length];
+  box.hidden = false;
+  setTimeout(() => box.classList.add("show"), reduce ? 0 : 1800);
+  document.getElementById("fortuneClose").onclick = () => {
+    box.classList.remove("show");
+    try { localStorage.setItem("fortuneDismissed", today); } catch (e) {}
+    setTimeout(() => { box.hidden = true; }, reduce ? 0 : 400);
+  };
 })();
 
 /* Command palette (Ctrl/Cmd + K) */
