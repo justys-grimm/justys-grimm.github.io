@@ -207,6 +207,9 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .fortune p{margin:0}
 .fortune .f-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-text);margin-bottom:4px}
 .fortune .f-text{font-size:14px;line-height:1.5}
+.fortune .f-sub{font-size:12px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.fortune .f-sub button{position:static;width:auto;height:auto;padding:1px 6px;font:12px var(--mono);color:var(--accent-text);background:var(--surface-2);border:1px solid var(--line);border-radius:5px;vertical-align:1px}
+.fortune .f-sub button:hover{border-color:var(--accent)}
 .fortune button{position:absolute;top:8px;right:8px;width:26px;height:26px;border:0;border-radius:7px;background:none;color:var(--muted);font-size:18px;line-height:1;cursor:pointer}
 .fortune button:hover{background:var(--surface-2);color:var(--text)}
 @media (max-width:640px){.fortune{right:16px;bottom:16px}}
@@ -362,6 +365,7 @@ footer a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
 <aside class="fortune" id="fortune" aria-label="Fortune of the day" hidden>
   <p class="f-label">Fortune of the day</p>
   <p class="f-text" id="fortuneText"></p>
+  <p class="f-sub">Psst: try <button type="button" id="fortuneDecrypt">decrypt</button> in the shell, a word game for IT folks.</p>
   <button type="button" id="fortuneClose" aria-label="Dismiss until tomorrow">×</button>
 </aside>
 
@@ -978,17 +982,19 @@ function hl(src, lang) {
     });
     return inp;
   };
-  const shell = () => {
+  const shell = cmd => {
     run++; mode = null;                      // cancels the demo loop and any game
     paused = false; pauseBtn.textContent = "❚❚"; pauseBtn.setAttribute("aria-label", "Pause animation");
     tabs.forEach(t => t.classList.remove("on")); shellTab.classList.add("on");
     pauseBtn.hidden = true; body.classList.add("live"); body.innerHTML = "";
     out(dim("Interactive shell. Type 'help' to list commands, 'exit' to return to the demo."));
-    prompt();
+    out(`${dim("New:")} type ${h("decrypt")} ${dim("to crack a 5-letter IT word in 6 tries.")}`);
+    const inp = prompt();
+    if (typeof cmd === "string") { inp.value = cmd; inp.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })); }
   };
-  shellTab.onclick = shell;
-  window.openShell = () => { shell(); term.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); };
-  document.getElementById("shellLink").onclick = window.openShell;
+  shellTab.onclick = () => shell();
+  window.openShell = cmd => { shell(cmd); term.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); };
+  document.getElementById("shellLink").onclick = () => window.openShell();
   body.addEventListener("click", () => {
     if (!body.classList.contains("live") || getSelection().toString()) return;
     const i = body.querySelector(".t-in"); if (i) i.focus({ preventScroll: true });
@@ -1019,6 +1025,7 @@ const FORTUNES = [
   document.getElementById("fortuneText").textContent = FORTUNES[(day + d.getFullYear()) % FORTUNES.length];
   box.hidden = false;
   setTimeout(() => box.classList.add("show"), reduce ? 0 : 1800);
+  document.getElementById("fortuneDecrypt").onclick = () => window.openShell("decrypt");
   document.getElementById("fortuneClose").onclick = () => {
     box.classList.remove("show");
     try { localStorage.setItem("fortuneDismissed", today); } catch (e) {}
