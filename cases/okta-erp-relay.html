@@ -91,11 +91,9 @@
     <li><strong>An allowlist beats a blocklist.</strong> New ERP capabilities stay unreachable until someone deliberately adds them.</li>
     <li><strong>Keep error messages boring.</strong> Log the detail; tell the caller only what it needs to retry or stop.</li>
   </ul>
-  <p>I've published a generic, tested version of the signing and allowlist pattern as an open-source PowerShell module:
-  <a href="https://github.com/justys-grimm/hmac-relay">hmac-relay on GitHub</a>.</p>
 
   <p class="note">Details are generalized. No internal hostnames, network layout, tenant details or employer code appear here;
-  the code on the résumé site and in the linked repo was written separately for illustration.</p>
+  the code samples on the résumé site were written separately for illustration.</p>
 </article>
 <script>
 document.getElementById("theme").onclick=()=>{const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=d?"light":"dark";try{localStorage.setItem("theme",r.dataset.theme)}catch(e){}};
