@@ -6,7 +6,7 @@
 <title>Justys Grimm — Resume</title>
 <meta name="description" content="Identity and cloud automation engineer — Azure Government, GCC High, Okta, Entra ID.">
 <meta property="og:title" content="Justys Grimm — Identity & Cloud Automation Engineer">
-<meta property="og:description" content="Okta, Microsoft Entra ID, Azure Government / GCC High automation. Active TS/SCI eligibility.">
+<meta property="og:description" content="Okta, Microsoft Entra ID, Azure Government / GCC High automation. TS/SCI.">
 <meta property="og:type" content="profile">
 <meta name="theme-color" content="#2563eb">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-size='30' font-weight='700' fill='white' text-anchor='middle'%3EJG%3C/text%3E%3C/svg%3E">
@@ -39,7 +39,7 @@ a:hover{text-decoration:underline}
 
 /* Top bar */
 .topbar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.topbar-inner{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px}
+.topbar-inner{max-width:1240px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px}
 .brand{font-weight:700;letter-spacing:-.01em;white-space:nowrap}
 .brand span{color:var(--accent)}
 .nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
@@ -49,80 +49,109 @@ a:hover{text-decoration:underline}
 .icon-btn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;height:34px;min-width:34px;padding:0 10px;cursor:pointer;font:inherit;font-size:14px;display:inline-flex;align-items:center;gap:6px}
 .icon-btn:hover{border-color:var(--accent)}
 
-/* Layout */
-main{max-width:1080px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px}
+/* Layout: hero on top, then main column + sidebar */
+main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
+.col-main,.col-side{display:grid;gap:20px;align-content:start;min-width:0}
+@media (min-width:1180px){
+  .cols{grid-template-columns:300px minmax(0,1fr)}
+  .col-side{order:-1}
+  .col-side .skill-groups{grid-template-columns:1fr}
+  .col-side .module{padding:22px}
+}
+@media (min-width:1180px) and (min-height:1000px){
+  .col-side{position:sticky;top:76px}
+}
 .module{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px}
 .module h2{margin:0 0 18px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
 .module h2::after{content:"";flex:1;height:1px;background:var(--line)}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 
 /* Hero */
-.hero{padding:40px 28px;position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:32px;align-items:center}
-@media (max-width:920px){.hero{grid-template-columns:minmax(0,1fr)}}
-.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 240px at 100% 0%,var(--accent-soft),transparent 70%);pointer-events:none}
+.hero{padding:36px 28px;position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.25fr);gap:32px;align-items:center}
+@media (max-width:980px){.hero{grid-template-columns:minmax(0,1fr)}}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 240px at 0% 0%,var(--accent-soft),transparent 70%);pointer-events:none}
 .hero > *{position:relative}
 .badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--accent-text);background:var(--accent-soft);padding:5px 12px;border-radius:999px}
 .badge .dot{width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 25%,transparent)}
-.hero h1{font-size:clamp(34px,6vw,56px);line-height:1.05;letter-spacing:-.03em;margin:18px 0 10px}
-.hero .tagline{font-size:clamp(16px,2.2vw,20px);color:var(--muted);margin:0 0 22px;max-width:46ch}
+.hero h1{font-size:clamp(34px,5vw,54px);line-height:1.05;letter-spacing:-.03em;margin:18px 0 10px}
+.hero .tagline{font-size:clamp(16px,2vw,19px);color:var(--muted);margin:0 0 22px;max-width:40ch}
 .contact{display:flex;flex-wrap:wrap;gap:10px}
 .contact a,.contact span{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);padding:7px 12px;border-radius:9px}
 .contact a:hover{border-color:var(--accent);text-decoration:none}
 .contact svg{width:15px;height:15px;color:var(--muted)}
 
+/* Terminal (always dark, in both themes) */
+.term-wrap{min-width:0}
+.term{background:#0b0e14;border:1px solid #232a36;border-radius:12px;box-shadow:0 14px 40px rgba(2,6,23,.32);overflow:hidden;font:12px/1.65 var(--mono);color:#c9d1d9}
+.term-bar{display:flex;align-items:center;gap:12px;padding:9px 12px;background:#121722;border-bottom:1px solid #232a36}
+.dots{display:flex;gap:6px;flex:none}
+.dots i{width:10px;height:10px;border-radius:50%}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.term-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.term-tabs::-webkit-scrollbar{display:none}
+.term-tab,.term-ctl{font:inherit;font-size:12px;color:#8b949e;background:none;border:0;padding:3px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.term-tab:hover,.term-ctl:hover{color:#c9d1d9}
+.term-tab.on{background:#1f2633;color:#e6edf3}
+.term-ctl{flex:none;border:1px solid #2a3240}
+.term-body{height:400px;overflow:hidden;padding:12px 14px;white-space:pre-wrap;word-break:break-word}
+.tl{display:flex;min-height:1.65em}
+.tl .g{flex:none;color:#4b5563;user-select:none}
+.tl .g.ln{width:3.2ch;text-align:right;margin-right:1.4ch}
+.tl .c{flex:1;min-width:0}
+.t-prompt{color:#7ee787}.t-fn{color:#79c0ff}.t-var{color:#ffa657}.t-str{color:#a5d6ff}
+.t-par{color:#d2a8ff}.t-kw{color:#ff7b72}.t-num{color:#f2cc60}
+.t-com,.t-dim{color:#8b949e}.t-ok{color:#3fb950}.t-err{color:#f85149}.t-out{color:#c9d1d9}
+.t-cur{display:inline-block;width:.55em;height:1.1em;background:#c9d1d9;vertical-align:-.2em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.term-note{font-size:12px;color:var(--muted);margin:8px 2px 0}
+
 /* Stats */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:16px}
-.stat b{display:block;font-size:28px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat b{display:block;font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .stat span{font-size:13px;color:var(--muted)}
 
 /* Summary */
 .summary p{margin:0;font-size:17px;max-width:72ch}
 
 /* Skills */
-.skill-groups{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.skill-group h3{margin:0 0 10px;font-size:15px}
+.skill-groups{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.skill-group h3{margin:0 0 10px;font-size:14px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font-size:13px;padding:4px 10px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);color:var(--text)}
-
-/* Terminal (always dark, in both themes) */
-.term{background:#0b0e14;border:1px solid #232a36;border-radius:12px;box-shadow:0 14px 40px rgba(2,6,23,.32);overflow:hidden;font:12.5px/1.65 var(--mono);color:#c9d1d9;min-width:0}
-.term-bar{display:flex;align-items:center;gap:12px;padding:9px 12px;background:#121722;border-bottom:1px solid #232a36}
-.dots{display:flex;gap:6px;flex:none}
-.dots i{width:10px;height:10px;border-radius:50%}
-.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
-.term-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
-.term-tabs::-webkit-scrollbar{display:none}
-.term-tab{font:inherit;font-size:12px;color:#8b949e;background:none;border:0;padding:3px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
-.term-tab:hover{color:#c9d1d9}
-.term-tab.on{background:#1f2633;color:#e6edf3}
-.term-body{height:300px;overflow:hidden;padding:14px 16px;white-space:pre-wrap;word-break:break-word}
-.tl{min-height:1.65em}
-.t-prompt{color:#7ee787}.t-fn{color:#79c0ff}.t-var{color:#ffa657}.t-str{color:#a5d6ff}
-.t-par{color:#d2a8ff}.t-kw{color:#ff7b72}.t-num{color:#f2cc60}
-.t-com,.t-dim{color:#8b949e}.t-ok{color:#3fb950}.t-err{color:#f85149}.t-out{color:#c9d1d9}
-.t-cur{display:inline-block;width:.55em;height:1.1em;background:#c9d1d9;vertical-align:-.2em;animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
+.chip{font-size:12.5px;padding:3px 9px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);color:var(--text)}
 
 /* Experience */
-.timeline{position:relative;display:grid;gap:8px}
-.job{display:grid;grid-template-columns:180px 1fr;gap:24px;padding:20px 0;border-top:1px solid var(--line)}
+.timeline{display:grid;gap:8px}
+.job{display:grid;grid-template-columns:170px minmax(0,1fr);gap:24px;padding:20px 0;border-top:1px solid var(--line)}
 .job:first-child{border-top:0;padding-top:0}
 .job-meta{font-size:14px;color:var(--muted)}
 .job-meta .dates{font-family:var(--mono);font-size:12.5px;color:var(--text);display:block;margin-bottom:4px}
 .job h3{margin:0;font-size:19px;letter-spacing:-.01em}
 .job .org{color:var(--accent-text);font-weight:500;margin:2px 0 12px}
 .job ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
-.job li{position:relative;padding-left:18px;color:var(--text)}
+.job li{position:relative;padding-left:18px}
 .job li::before{content:"";position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:2px;background:var(--accent)}
 .current{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#16a34a;margin-left:8px}
 
-/* Education */
-.cert{display:flex;align-items:center;gap:14px}
-.cert-icon{width:44px;height:44px;border-radius:11px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
-.cert b{display:block}
-.cert span{color:var(--muted);font-size:14px}
-.clearance{display:flex;align-items:center;gap:14px}
+/* Architecture diagram */
+.arch{grid-column:1/-1;margin:4px 0 0;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:16px 18px}
+.arch-title{font-size:13px;font-weight:600;margin:0 0 12px}
+.lane{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:start;padding:8px 0}
+.lane + .lane{border-top:1px dashed var(--line)}
+.lane-label{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding-top:6px}
+.flow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:20px;align-items:stretch}
+.node{position:relative;font-size:12.5px;line-height:1.3;padding:6px 9px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.node:not(:last-child)::after{content:"→";position:absolute;right:-16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}
+.node small{display:block;color:var(--muted);font-size:11px}
+.node.key{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.arch-note{font-size:12px;color:var(--muted);margin:10px 0 0}
+
+/* Credentials */
+.cred{display:flex;align-items:center;gap:14px}
+.cred + .cred{margin-top:16px}
+.cred-icon{width:42px;height:42px;border-radius:11px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
+.cred b{display:block;line-height:1.3}
+.cred span{color:var(--muted);font-size:14px}
 
 footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
 
@@ -135,25 +164,33 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
 @media (max-width:860px){
   .skill-groups{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,1fr)}
-  .grid-2{grid-template-columns:1fr}
   .job{grid-template-columns:1fr;gap:6px}
+  .lane{grid-template-columns:1fr;gap:6px}
+  .lane-label{padding-top:0}
+  .flow{grid-auto-flow:row;gap:18px}
+  .node:not(:last-child)::after{content:"↓";right:auto;top:auto;left:50%;bottom:-18px;transform:translateX(-50%)}
 }
 @media (max-width:520px){
   .module{padding:20px}
-  .hero{padding:28px 20px}
+  .hero{padding:26px 18px}
   .brand{display:none}
   .icon-btn .lbl{display:none}
-  .term{font-size:11.5px}
-  .term-body{height:270px;padding:12px}
+  .term{font-size:11px}
+  .term-body{height:340px;padding:10px}
+  .stat b{font-size:22px}
 }
 
 /* Print */
 @media print{
   :root{--bg:#fff;--surface:#fff;--surface-2:#fff;--text:#000;--muted:#444;--line:#ddd;--accent:#1d4ed8;--accent-soft:#fff;--accent-text:#1d4ed8;--shadow:none}
-  .topbar,footer,.term,.hero::before{display:none!important}
+  .topbar,footer,.term-wrap,.hero::before{display:none!important}
   .hero{display:block}
+  .cols{display:block}
+  .col-side{position:static}
   main{padding:0;gap:10px}
   .module{opacity:1;transform:none;box-shadow:none;border:0;padding:8px 0;break-inside:avoid}
+  .col-main,.col-side{gap:10px}
+  .arch{break-inside:avoid}
   body{font-size:12px}
 }
 </style>
@@ -183,19 +220,18 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
 const RESUME = {
   name: "Justys Grimm",
   tagline: "Identity & cloud automation engineer for regulated DoD and Azure Government environments.",
-  badge: "Active TS/SCI Eligibility",
+  badge: "TS/SCI · Adjudicated 03/2025",
   contact: [
     { type: "location", label: "Wichita, KS" },
     { type: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/in/justys-grimm", external: true }
     /* Add more, e.g. { type: "email", label: "you@example.com", href: "mailto:you@example.com" } */
   ],
-  focus: ["Identity & Cloud Automation", "Azure Government / GCC High"],
 
   stats: [
-    { value: 20000, suffix: "",  label: "Users onboarded to Okta" },
-    { value: 100,   prefix: "~", label: "Enterprise apps consolidated" },
-    { value: 4000,  prefix: "~", label: "Devices migrated to Entra ID" },
-    { value: 4,     suffix: "+ yrs", label: "IAM & automation at V2X" }
+    { value: 20000, label: "Users onboarded to Okta" },
+    { value: 100,  prefix: "~", label: "Enterprise apps consolidated" },
+    { value: 4000, prefix: "~", label: "Devices moved to Entra join" },
+    { value: 16,   prefix: "~", suffix: " hrs/wk", label: "Manual termination review automated" }
   ],
 
   summary: "Identity and integration engineer supporting regulated DoD and Azure Government environments. Builds secure custom APIs and serverless automation connecting Okta, legacy ERP platforms, Azure Automation, Active Directory, and Microsoft Entra ID. Delivers scalable identity rollouts, lifecycle controls, and ITGC-ready operational systems.",
@@ -214,66 +250,124 @@ const RESUME = {
         "Led the initial Okta configuration and enterprise rollout for a 20,000-user organization, consolidating authentication for approximately 100 enterprise applications into Okta and establishing SSO, lifecycle management, and automated provisioning patterns across SaaS applications.",
         "Engineered a custom Azure Function API connecting Okta Workflows to legacy IFS ERP services; implemented allowlisted create, retrieve, and update operations, HMAC request validation, anti-replay timestamps, input normalization, and upstream error handling.",
         "Developed PowerShell Azure Function Apps that securely orchestrate Okta-triggered privileged-account termination requests into Azure Automation Hybrid Worker runbooks using OAuth 2.0 bearer tokens, managed identity, and Azure Resource Manager job APIs.",
+        "Replaced manual, multi-ticket termination review (~100 terminations per week at ~10 minutes each, roughly 16 staff-hours weekly) with automated processing that now needs only minutes of weekly oversight.",
         "Architected a GCC High termination-evidence platform using Azure Functions, Blob Storage, Event Grid, Storage Queues, Azure SQL, managed identities, and Power BI, with immutable evidence handling and controlled reporting access.",
-        "Led endpoint migration work for approximately 4,000 devices from hybrid Active Directory domain join to cloud-native Microsoft Entra ID domain join."
-      ]
+        "Led endpoint migration of approximately 4,000 devices from hybrid Microsoft Entra join to cloud-native Microsoft Entra join."
+      ],
+      diagram: {
+        title: "Termination automation & evidence pipeline · GCC High",
+        lanes: [
+          { label: "Orchestrate", nodes: [
+            { name: "Okta Workflows", note: "termination trigger" },
+            { name: "Azure Function", note: "PowerShell · OAuth 2.0", key: true },
+            { name: "ARM Jobs API", note: "managed identity" },
+            { name: "Hybrid Worker", note: "runbook" },
+            { name: "Active Directory", note: "disable" } ] },
+          { label: "Evidence", nodes: [
+            { name: "Blob Storage", note: "immutable (WORM)", key: true },
+            { name: "Event Grid" },
+            { name: "Storage Queue" },
+            { name: "Azure Function", note: "ingest" },
+            { name: "Azure SQL" },
+            { name: "Power BI", note: "controlled access" } ] }
+        ],
+        note: "Simplified view; component names are generic."
+      }
     },
     {
       company: "Tech Experts", location: "Colorado Springs, CO",
       title: "Technical Support Engineer", start: "April 2021", end: "March 2022",
       bullets: ["Supported GCC High and DoD Exchange environments and managed critical customer escalations through ticket-based support workflows."]
-    },
-    {
-      company: "ADT Security", location: "Colorado Springs, CO",
-      title: "Radio Technician", start: "April 2021", end: "October 2021",
-      bullets: ["Installed, configured, and troubleshot low-voltage security and communications equipment in field environments."]
     }
   ],
 
-  education: [
-    { name: "CompTIA A+ Certification", detail: "CompTIA", year: "2020" }
-  ],
-  clearance: { name: "TS/SCI Eligibility", detail: "Active" },
+  clearance: { name: "TS/SCI", detail: "Adjudicated 03/24/2025" },
+  education: [ { name: "CompTIA A+", detail: "Certified 2020" } ],
 
-  /* Order and visibility of modules. Remove or reorder to customize. */
-  layout: ["hero", "stats", "summary", "skills", "experience", ["education", "clearance"]]
+  /* Module placement. top = full width; main = right column; side = left sidebar (stacks below main on smaller screens). */
+  layout: { top: ["hero"], main: ["stats", "summary", "experience"], side: ["credentials", "skills"] }
 };
 
-/* Terminal scripts shown in the header. Sample code only — fictional tenant (contoso).
-   Line types: { prompt, cmd } typed out · { out, cls } printed · { progress, total } animated bar */
+/* Terminal tabs in the header. Illustrative, written for this site — fictional values only.
+   code: typed into an editor view · run: commands ({prompt, cmd, lang}) and output ({out, cls}) */
 const TERM_SCRIPTS = [
-  { tab: "offboard.ps1", lang: "ps", lines: [
-    { prompt: "PS> ", cmd: "$user = Get-MgUser -UserId 'a.smith@contoso.us' -Property Id,AccountEnabled" },
-    { prompt: "PS> ", cmd: "Invoke-OffboardRunbook -User $user -Reason 'Termination' -Verbose" },
-    { out: "VERBOSE: Bearer token acquired via managed identity", cls: "dim" },
-    { out: "VERBOSE: Queued Hybrid Worker job 'Disable-PrivilegedAccount'", cls: "dim" },
-    { out: "[✓] AD account disabled        DC01.corp.contoso.us", cls: "ok" },
-    { out: "[✓] Entra ID sessions revoked  3 refresh tokens", cls: "ok" },
-    { out: "[✓] Okta user deactivated      12 app assignments", cls: "ok" },
-    { out: "[✓] Evidence sealed            blob://termination/a.smith.json", cls: "ok" },
-    { out: "Job 7f3c2a91 · Completed · 14.2s" }
-  ]},
-  { tab: "hmac_gate.py", lang: "py", lines: [
-    { prompt: ">>> ", cmd: "import hmac, hashlib, time" },
-    { prompt: ">>> ", cmd: "def verify(sig, ts, body, key):" },
-    { prompt: "... ", cmd: "    if abs(time.time() - int(ts)) > 300:" },
-    { prompt: "... ", cmd: "        raise PermissionError(\"stale timestamp\")" },
-    { prompt: "... ", cmd: "    mac = hmac.new(key, f\"{ts}.{body}\".encode(), hashlib.sha256)" },
-    { prompt: "... ", cmd: "    return hmac.compare_digest(mac.hexdigest(), sig)" },
-    { prompt: "... ", cmd: "" },
-    { prompt: ">>> ", cmd: "verify(req.sig, req.ts, req.body, KEY)" },
-    { out: "True", cls: "ok" },
-    { prompt: ">>> ", cmd: "verify(req.sig, req.ts - 900, req.body, KEY)  # replay" },
-    { out: "PermissionError: stale timestamp", cls: "err" }
-  ]},
-  { tab: "migrate.ps1", lang: "ps", lines: [
-    { prompt: "PS> ", cmd: "Import-Csv .\\devices.csv | Start-EntraJoinMigration -ThrottleLimit 50" },
-    { progress: "Entra join", total: 4000 },
-    { out: "[✓] 4,000 devices moved from hybrid AD join → Entra ID join", cls: "ok" },
-    { out: "    0 failed · 0 pending · Autopilot profiles assigned", cls: "dim" },
-    { prompt: "PS> ", cmd: "(Get-OktaApp -Filter 'status eq \"ACTIVE\"').Count" },
-    { out: "100", cls: "num" }
-  ]}
+  { tab: "offboard/run.ps1", lang: "ps", code: String.raw`# Okta Workflows → Azure Function (PowerShell) · GCC High
+param($Request)
+$upn = $Request.Body.upn
+Connect-MgGraph -Identity -Environment USGov -NoWelcome
+$u = Get-MgUser -UserId $upn -Property Id,OnPremisesSyncEnabled
+
+if ($u.OnPremisesSyncEnabled) {
+    # AD is the source of authority → queue a runbook on the Hybrid Worker group
+    $arm = 'https://management.usgovcloudapi.net/'
+    $mi  = "$($env:IDENTITY_ENDPOINT)?resource=$arm&api-version=2019-08-01"
+    $tok = (Invoke-RestMethod $mi -Headers @{ 'X-IDENTITY-HEADER' = $env:IDENTITY_HEADER }).access_token
+    $job = @{ properties = @{
+        runbook = @{ name = 'Disable-ADUser' }; runOn = $env:HW_GROUP
+        parameters = @{ Upn = $upn } } } | ConvertTo-Json -Depth 4
+    $req = @{ Method = 'Put'; Body = $job; ContentType = 'application/json'
+        Uri = "$env:AA_URI/jobs/$(New-Guid)?api-version=2023-11-01"
+        Headers = @{ Authorization = "Bearer $tok" } }
+    Invoke-RestMethod @req | Out-Null
+} else {
+    Update-MgUser -UserId $u.Id -AccountEnabled:$false
+}
+# refresh tokens revoked; live access tokens run to expiry unless CAE applies
+Revoke-MgUserSignInSession -UserId $u.Id | Out-Null
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{ StatusCode = 202 })`,
+    run: [ { out: "Executed 'Functions.offboard' (Succeeded, Duration=742ms)", cls: "dim" } ] },
+
+  { tab: "hmac_gate.py", lang: "py", code: String.raw`# Guards the Okta Workflows → IFS ERP API (Python Azure Function)
+import hashlib, hmac, time
+import azure.functions as func
+
+WINDOW = 300  # seconds
+
+def verify(req: func.HttpRequest, secret: bytes, nonces) -> None:
+    try:
+        ts = int(req.headers.get("X-Timestamp", ""))
+    except ValueError:
+        raise PermissionError("missing or malformed timestamp")
+    if abs(time.time() - ts) > WINDOW:
+        raise PermissionError("timestamp outside window")
+    sig = req.headers.get("X-Signature", "")
+    msg = f"{ts}.".encode() + req.get_body()
+    want = hmac.new(secret, msg, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(want, sig):
+        raise PermissionError("signature mismatch")
+    # shared nonce store (Table / Redis) rejects replays inside the window
+    if not nonces.claim(sig, ttl=WINDOW):
+        raise PermissionError("replayed request")`,
+    run: [
+      { prompt: "$ ", cmd: "pytest -q tests/test_hmac_gate.py", lang: "sh" },
+      { out: ".....                                        [100%]", cls: "ok" },
+      { out: "5 passed in 0.12s", cls: "ok" } ] },
+
+  { tab: "evidence_writer.py", lang: "py", code: String.raw`# Termination evidence → immutable Blob storage · GCC High
+import json
+from datetime import datetime, timezone
+from azure.identity import ManagedIdentityCredential
+from azure.storage.blob import BlobServiceClient
+
+svc = BlobServiceClient(
+    "https://<account>.blob.core.usgovcloudapi.net",
+    credential=ManagedIdentityCredential(),
+)
+# container has a time-based immutability (WORM) policy: no edits, no deletes
+evidence = svc.get_container_client("termination-evidence")
+
+def record(event: dict) -> str:
+    event["captured_at"] = datetime.now(timezone.utc).isoformat()
+    name = f"{event['case_id']}/{event['step']}.json"
+    evidence.upload_blob(name, json.dumps(event, sort_keys=True), overwrite=False)
+    return name`,
+    run: [
+      { prompt: "$ ", cmd: "python -i evidence_writer.py", lang: "sh" },
+      { prompt: ">>> ", cmd: "evt = {\"case_id\": \"T-0412\", \"step\": \"ad_disable\", \"result\": \"ok\"}", lang: "py" },
+      { prompt: ">>> ", cmd: "record(evt)", lang: "py" },
+      { out: "'T-0412/ad_disable.json'" },
+      { prompt: ">>> ", cmd: "record(evt)  # same step written twice", lang: "py" },
+      { out: "azure.core.exceptions.ResourceExistsError: The specified blob already exists.", cls: "err" } ] }
 ];
 
 /* ============================================================
@@ -282,12 +376,20 @@ const TERM_SCRIPTS = [
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ICONS = {
   location:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>',
-  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
   email:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>',
   linkedin:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>',
-  cert:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/></svg>',
-  shield:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>'
+  cert:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/></svg>',
+  shield:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>'
 };
+
+const renderDiagram = d => `
+  <figure class="arch" aria-label="${esc(d.title)}">
+    <p class="arch-title">${esc(d.title)}</p>
+    ${d.lanes.map(l => `<div class="lane"><div class="lane-label">${esc(l.label)}</div><div class="flow">
+      ${l.nodes.map(n => `<span class="node${n.key ? " key" : ""}">${esc(n.name)}${n.note ? `<small>${esc(n.note)}</small>` : ""}</span>`).join("")}
+    </div></div>`).join("")}
+    ${d.note ? `<figcaption class="arch-note">${esc(d.note)}</figcaption>` : ""}
+  </figure>`;
 
 const MODULES = {
   hero: { title: null, render: r => `
@@ -302,12 +404,16 @@ const MODULES = {
             : `<span>${ICONS[c.type]||""}${esc(c.label)}</span>`).join("")}
         </div>
       </div>
-      <div class="term" id="term">
-        <div class="term-bar">
-          <span class="dots"><i></i><i></i><i></i></span>
-          <div class="term-tabs">${TERM_SCRIPTS.map(s => `<button class="term-tab">${esc(s.tab)}</button>`).join("")}</div>
+      <div class="term-wrap">
+        <div class="term" id="term">
+          <div class="term-bar">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <div class="term-tabs">${TERM_SCRIPTS.map(s => `<button class="term-tab">${esc(s.tab)}</button>`).join("")}</div>
+            <button class="term-ctl" id="termPause" aria-label="Pause animation">❚❚</button>
+          </div>
+          <div class="term-body" aria-label="Sample automation code"></div>
         </div>
-        <div class="term-body" aria-label="Sample automation scripts"></div>
+        <p class="term-note">Illustrative samples written for this site · fictional values, not employer code.</p>
       </div>
     </section>`},
 
@@ -324,16 +430,6 @@ const MODULES = {
       <p>${esc(r.summary)}</p>
     </section>`},
 
-  skills: { title: "Skills", render: r => `
-    <section class="module" id="skills">
-      <h2>Technical Skills</h2>
-      <div class="skill-groups">
-        ${r.skills.map(g => `<div class="skill-group"><h3>${esc(g.group)}</h3><div class="chips">
-          ${g.items.map(i => `<span class="chip">${esc(i)}</span>`).join("")}
-        </div></div>`).join("")}
-      </div>
-    </section>`},
-
   experience: { title: "Experience", render: r => `
     <section class="module" id="experience">
       <h2>Professional Experience</h2>
@@ -345,35 +441,39 @@ const MODULES = {
             <div class="org">${esc(j.company)}</div>
             <ul>${j.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
           </div>
+          ${j.diagram ? renderDiagram(j.diagram) : ""}
         </article>`).join("")}
       </div>
     </section>`},
 
-  education: { title: "Education", render: r => `
-    <section class="module" id="education">
-      <h2>Education &amp; Certification</h2>
-      ${r.education.map(e => `<div class="cert"><div class="cert-icon">${ICONS.cert}</div><div><b>${esc(e.name)}</b><span>${esc(e.detail)} · ${esc(e.year)}</span></div></div>`).join("")}
+  credentials: { title: "Credentials", render: r => `
+    <section class="module" id="credentials">
+      <h2>Clearance &amp; Certs</h2>
+      <div class="cred"><div class="cred-icon">${ICONS.shield}</div><div><b>${esc(r.clearance.name)}</b><span>${esc(r.clearance.detail)}</span></div></div>
+      ${r.education.map(e => `<div class="cred"><div class="cred-icon">${ICONS.cert}</div><div><b>${esc(e.name)}</b><span>${esc(e.detail)}</span></div></div>`).join("")}
     </section>`},
 
-  clearance: { title: "Clearance", render: r => `
-    <section class="module" id="clearance">
-      <h2>Clearance</h2>
-      <div class="clearance"><div class="cert-icon">${ICONS.shield}</div><div><b>${esc(r.clearance.name)}</b><span>${esc(r.clearance.detail)}</span></div></div>
+  skills: { title: "Skills", render: r => `
+    <section class="module" id="skills">
+      <h2>Technical Skills</h2>
+      <div class="skill-groups">
+        ${r.skills.map(g => `<div class="skill-group"><h3>${esc(g.group)}</h3><div class="chips">
+          ${g.items.map(i => `<span class="chip">${esc(i)}</span>`).join("")}
+        </div></div>`).join("")}
+      </div>
     </section>`}
 };
 
 /* ============================================================
    RENDER
    ============================================================ */
-const app = document.getElementById("app");
-app.innerHTML = RESUME.layout.map(entry => Array.isArray(entry)
-  ? `<div class="grid-2">${entry.map(k => MODULES[k].render(RESUME)).join("")}</div>`
-  : MODULES[entry].render(RESUME)).join("");
+const L = RESUME.layout, R = k => MODULES[k].render(RESUME);
+document.getElementById("app").innerHTML =
+  L.top.map(R).join("") +
+  `<div class="cols"><div class="col-main">${L.main.map(R).join("")}</div><aside class="col-side">${L.side.map(R).join("")}</aside></div>`;
 
-const flat = RESUME.layout.flat();
-document.getElementById("nav").innerHTML = flat
-  .filter(k => MODULES[k].title)
-  .map(k => `<a href="#${k}">${MODULES[k].title}</a>`).join("");
+const navOrder = [...L.top, ...L.main, ...L.side].filter(k => MODULES[k].title);
+document.getElementById("nav").innerHTML = navOrder.map(k => `<a href="#${k}">${MODULES[k].title}</a>`).join("");
 document.getElementById("footer").textContent = `© ${new Date().getFullYear()} ${RESUME.name}`;
 
 /* Theme toggle (remembered per browser) */
@@ -399,7 +499,7 @@ const io = new IntersectionObserver(es => es.forEach(e => {
   e.target.classList.add("in");
   if (!reduce) e.target.querySelectorAll("[data-count]").forEach(countUp);
   io.unobserve(e.target);
-}), { threshold: .12 });
+}), { threshold: .08 });
 document.querySelectorAll(".module").forEach(m => io.observe(m));
 
 /* Active nav link */
@@ -407,16 +507,17 @@ const links = [...document.querySelectorAll(".nav a")];
 const navIO = new IntersectionObserver(es => es.forEach(e => {
   if (e.isIntersecting) links.forEach(a => a.classList.toggle("active", a.hash === "#" + e.target.id));
 }), { rootMargin: "-40% 0px -55% 0px" });
-flat.forEach(k => { const el = document.getElementById(k); if (el) navIO.observe(el); });
+navOrder.forEach(k => { const el = document.getElementById(k); if (el) navIO.observe(el); });
 
-/* Terminal: syntax highlighting + typing engine */
+/* Terminal: syntax highlighting */
 const HL = {
-  ps: { re: /(#.*$)|('[^']*'?|"[^"]*"?)|(\$[\w:]+)|(\b[A-Z][a-z]+-[A-Z][A-Za-z]+\b)|((?:^|\s)-[A-Za-z]+)|(\b\d[\d.]*\b)/g,
-        cls: ["com","str","var","fn","par","num"] },
-  py: { re: /(#.*$)|(f?"[^"]*"?|'[^']*'?)|\b(import|from|def|return|if|raise|for|in|not|and|or|True|False|None|as|with)\b|(\b\d[\d.]*\b)|(\b[A-Za-z_]\w*(?=\())/g,
+  ps: { re: /(#.*$)|('[^']*'?|"[^"]*"?)|(\$[\w:]+)|\b(param|if|else|elseif|foreach|return|try|catch)\b|(\b[A-Z][A-Za-z]+-[A-Z][A-Za-z]+\b)|((?:^|\s)-[A-Za-z]+)|(\b\d[\d.]*\b)/g,
+        cls: ["com","str","var","kw","fn","par","num"] },
+  py: { re: /(#.*$)|(f?"[^"]*"?|'[^']*'?)|\b(import|from|def|return|if|raise|try|except|for|in|not|and|or|True|False|None|as|with)\b|(\b\d[\d.]*\b)|(\b[A-Za-z_]\w*(?=\())/g,
         cls: ["com","str","kw","num","fn"] }
 };
 function hl(src, lang) {
+  if (!HL[lang]) return esc(src);
   const { re, cls } = HL[lang]; const rx = new RegExp(re.source, "g");
   let out = "", last = 0, m;
   while ((m = rx.exec(src))) {
@@ -427,48 +528,65 @@ function hl(src, lang) {
   }
   return out + esc(src.slice(last));
 }
+
+/* Terminal: typing engine */
 (() => {
   const term = document.getElementById("term"); if (!term) return;
   const body = term.querySelector(".term-body"), tabs = [...term.querySelectorAll(".term-tab")];
-  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
-  let run = 0;
-  const line = html => { const d = document.createElement("div"); d.className = "tl"; d.innerHTML = html; body.appendChild(d); body.scrollTop = body.scrollHeight; return d; };
+  const pauseBtn = document.getElementById("termPause");
+  let run = 0, paused = false;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const sleep = async ms => { if (reduce) return; await wait(ms); while (paused || document.hidden) await wait(150); };
+  const line = (gutter, gcls, html) => {
+    const d = document.createElement("div"); d.className = "tl";
+    d.innerHTML = `<span class="g ${gcls}">${gutter}</span><span class="c">${html}</span>`;
+    body.appendChild(d); body.scrollTop = body.scrollHeight; return d.lastChild;
+  };
+  async function type(el, text, lang, speed) {
+    const indent = text.match(/^\s*/)[0].length;
+    if (!reduce) for (let c = indent; c < text.length; c++) {
+      el.innerHTML = hl(text.slice(0, c), lang) + '<span class="t-cur"></span>';
+      body.scrollTop = body.scrollHeight;
+      await sleep(speed());
+    }
+    el.innerHTML = hl(text, lang);
+  }
   async function play(i, id) {
     const s = TERM_SCRIPTS[i], live = () => id === run;
     tabs.forEach((t, k) => t.classList.toggle("on", k === i));
     body.innerHTML = "";
-    for (const ln of s.lines) {
+    const code = s.code.split("\n");
+    for (let n = 0; n < code.length; n++) {
       if (!live()) return;
-      if (ln.cmd !== undefined) {
-        const d = line(""), pr = `<span class="t-prompt">${esc(ln.prompt)}</span>`;
-        if (!reduce) for (let c = 0; c < ln.cmd.length; c++) {
-          if (!live()) return;
-          d.innerHTML = pr + hl(ln.cmd.slice(0, c), s.lang) + '<span class="t-cur"></span>';
-          await sleep(16 + Math.random() * 38);
-        }
-        d.innerHTML = pr + hl(ln.cmd, s.lang);
-        await sleep(380);
-      } else if (ln.progress) {
-        const d = line(""), W = 16, steps = 50;
-        for (let k = reduce ? steps : 0; k <= steps; k++) {
-          if (!live()) return;
-          const f = Math.round(W * k / steps), n = Math.round(ln.total * k / steps);
-          d.innerHTML = `<span class="t-dim">${esc(ln.progress)} </span><span class="t-ok">${"█".repeat(f)}</span><span class="t-dim">${"░".repeat(W - f)}</span> ${String(Math.round(100 * k / steps)).padStart(3)}% <span class="t-num">${n.toLocaleString()}/${ln.total.toLocaleString()}</span>`;
-          await sleep(60);
-        }
-        await sleep(250);
+      const el = line(String(n + 1), "ln", "");
+      await type(el, code[n], s.lang, () => 4 + Math.random() * 12);
+      if (!live()) return;
+      await sleep(code[n].trim() ? 90 : 40);
+    }
+    line("", "", ""); await sleep(500);
+    for (const r of s.run) {
+      if (!live()) return;
+      if (r.cmd !== undefined) {
+        const el = line(`<span class="t-prompt">${esc(r.prompt)}</span>`, "", "");
+        await type(el, r.cmd, r.lang || s.lang, () => 22 + Math.random() * 40);
+        await sleep(450);
       } else {
-        line(`<span class="t-${ln.cls || "out"}">${esc(ln.out)}</span>`);
-        await sleep(240);
+        line("", "", `<span class="t-${r.cls || "out"}">${esc(r.out)}</span>`);
+        await sleep(280);
       }
     }
     if (reduce || !live()) return;
-    line(`<span class="t-prompt">${esc(s.lines[0].prompt)}</span><span class="t-cur"></span>`);
-    await sleep(4500);
+    await sleep(6500);
     if (live()) start((i + 1) % TERM_SCRIPTS.length);
   }
   const start = i => play(i, ++run);
   tabs.forEach((t, k) => t.onclick = () => start(k));
+  pauseBtn.onclick = () => {
+    paused = !paused;
+    pauseBtn.textContent = paused ? "▶" : "❚❚";
+    pauseBtn.setAttribute("aria-label", paused ? "Resume animation" : "Pause animation");
+  };
+  if (reduce) pauseBtn.hidden = true;
   start(0);
 })();
 </script>
