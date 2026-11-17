@@ -598,11 +598,34 @@ const io = new IntersectionObserver(es => es.forEach(e => {
 document.querySelectorAll(".module").forEach(m => io.observe(m));
 
 /* Active nav link */
+// Active = the last main-column section whose top has passed a reading line just under the top bar.
+// Sidebar cards (Clearance, Skills) sit beside the main column on wide screens, so they're only
+// scroll-tracked when the layout is stacked; clicking one still highlights it while it's on screen.
 const links = [...document.querySelectorAll(".nav a")];
-const navIO = new IntersectionObserver(es => es.forEach(e => {
-  if (e.isIntersecting) links.forEach(a => a.classList.toggle("active", a.hash === "#" + e.target.id));
-}), { rootMargin: "-40% 0px -55% 0px" });
-navOrder.forEach(k => { const el = document.getElementById(k); if (el) navIO.observe(el); });
+const navEls = navOrder.map(k => document.getElementById(k)).filter(Boolean);
+const sideCol = document.querySelector(".col-side"), mainCol = document.querySelector(".col-main");
+let clicked = null;
+const setActive = id => links.forEach(a => a.classList.toggle("active", a.hash === "#" + id));
+const updateNav = () => {
+  if (clicked) {
+    const r = clicked.getBoundingClientRect();
+    if (r.bottom > 60 && r.top < innerHeight) return setActive(clicked.id);
+    clicked = null;
+  }
+  const twoCol = sideCol && mainCol && sideCol.getBoundingClientRect().right <= mainCol.getBoundingClientRect().left + 1;
+  const pool = navEls.filter(el => !(twoCol && sideCol.contains(el)))
+    .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+  const line = document.querySelector(".topbar").offsetHeight + innerHeight * 0.25;
+  let cur = null;
+  for (const el of pool) if (el.getBoundingClientRect().top <= line) cur = el;
+  if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2 && pool.length) cur = pool[pool.length - 1];
+  setActive(cur ? cur.id : "");
+};
+links.forEach(a => a.addEventListener("click", () => { clicked = document.getElementById(a.hash.slice(1)); setActive(clicked.id); }));
+let navTick = 0;
+addEventListener("scroll", () => { if (!navTick) navTick = requestAnimationFrame(() => { navTick = 0; updateNav(); }); }, { passive: true });
+addEventListener("resize", updateNav);
+updateNav();
 
 /* Terminal: syntax highlighting */
 const HL = {
