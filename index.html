@@ -22,17 +22,17 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#071127; --surface:#0d1830; --surface-2:#13203b; --text:#e7eaf0; --muted:#97a1b2;
-    --line:#1f2c47; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
+    --bg:#0c0f14; --surface:#141922; --surface-2:#1b212c; --text:#e7eaf0; --muted:#97a1b2;
+    --line:#252c38; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
-    --dot:120,140,180; --dot-a:.38;
+    --dot:215,220,228; --dot-a:.26;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#071127; --surface:#0d1830; --surface-2:#13203b; --text:#e7eaf0; --muted:#97a1b2;
-  --line:#1f2c47; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
+  --bg:#0c0f14; --surface:#141922; --surface-2:#1b212c; --text:#e7eaf0; --muted:#97a1b2;
+  --line:#252c38; --accent:#60a5fa; --accent-soft:#16243b; --accent-text:#93c5fd;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
-  --dot:120,140,180; --dot-a:.38;
+  --dot:215,220,228; --dot-a:.26;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:80px}
@@ -690,7 +690,7 @@ function hl(src, lang) {
 (() => {
   const cv = document.getElementById("dots"), ctx = cv.getContext("2d");
   const GAP = 14, R = 155, PUSH = 20, EASE = 0.10, DRAG = 0.45, still = reduce;
-  let W = 0, H = 0, dpr = 1, dots = [], bg = "#071127", rgb = "120,140,180", base = .38, raf = 0;
+  let W = 0, H = 0, dpr = 1, dots = [], bg = "#0c0f14", rgb = "215,220,228", base = .26, raf = 0;
   const ptr = { x: -1e4, y: -1e4, energy: 0 };
   const readTheme = () => {
     const cs = getComputedStyle(root);
