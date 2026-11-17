@@ -440,61 +440,77 @@ relay() {
   ts=$(date +%s)
   sig=$(printf '%s.%s' "$ts" "$body" | openssl dgst -sha256 -hmac "$RELAY_SECRET" -r | cut -d' ' -f1)
   [ -n "$SIG" ] && sig=$SIG   # forge a signature for testing
-  curl -s -w '  → HTTP %{http_code}\n' -X POST "$RELAY_URL/api/erp/$op" \
+  curl -s -w '  → HTTP %{http_code}\n' -X POST "$RELAY_URL/api/erp/$op" -H "Content-Type: application/json" \
     -H "x-functions-key: $FN_KEY" -H "X-Timestamp: $ts" -H "X-Signature: $sig" -d "$body"
 }`,
     run: [
       { prompt: "$ ", cmd: "source requests.sh && echo $RELAY_URL" },
       { out: "https://erp-relay-fn.azurewebsites.us" },
       { prompt: "$ ", cmd: "SIG=deadbeef relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\"a.smith@contoso.us\"}}'" },
-      { out: "{\"error\": \"unauthorized\", \"detail\": \"signature mismatch\"}  → HTTP 401", cls: "err" },
+      { out: "{\"error\":\"unauthorized\",\"detail\":\"signature mismatch\"}  → HTTP 401", cls: "err" },
       { prompt: "$ ", cmd: "relay employee.delete '{\"id\":\"e1042\"}'" },
-      { out: "{\"error\": \"forbidden\", \"detail\": \"'employee.delete' is not allowlisted\"}  → HTTP 403", cls: "err" },
+      { out: "{\"error\":\"forbidden\",\"detail\":\"'employee.delete' is not allowlisted\"}  → HTTP 403", cls: "err" },
+      { prompt: "$ ", cmd: "relay employee.get '{\"id\":\"e1042\"}'" },
+      { out: "{\"status\":\"ok\",\"upstream\":200,\"data\":{\"EmpNo\":\"E1042\",\"Email\":\"asmith@contoso.us\",\"Status\":\"Active\"}}  → HTTP 200", cls: "ok" },
       { prompt: "$ ", cmd: "relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\" a.smith@contoso.us \",\"Salary\":\"999999\"}}'" },
-      { out: "{\"status\": \"ok\", \"upstream\": 204, \"applied\": [\"Email\"]}  → HTTP 200", cls: "ok" } ] },
+      { out: "{\"status\":\"ok\",\"upstream\":204,\"applied\":[\"Email\"]}  → HTTP 200", cls: "ok" } ] },
 
-  { tab: "erp_relay.py", lang: "py", code: String.raw`# Okta Workflows → IFS ERP relay · Python Azure Function (GCC High)
-import json, logging
-import azure.functions as func
-from shared import AuthError, verify_signature, erp_session
+  { tab: "erp-relay/run.ps1", lang: "ps", code: String.raw`# Okta Workflows ⇄ legacy IFS ERP relay · PowerShell Azure Function (GCC High)
+# VNet integration routes ERP calls into the internal VLAN; Okta only ever sees this endpoint.
+using namespace System.Net
+param($Request)
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+$Ops      = @{ 'employee.get' = 'GET'; 'employee.create' = 'POST'; 'employee.update' = 'PATCH' }
+$Editable = 'Email', 'Status', 'SupervisorId'
+$Entity   = "$env:ERP_BASE_URL/EmployeeHandling.svc/Employees"
 
-ENTITY = "EmployeeHandling.svc/Employees(EmpNo='{id}')"
-ALLOWED = {"employee.get": "GET", "employee.update": "PATCH"}  # op → method
-EDITABLE = {"Email", "Status", "SupervisorId"}
+function Reply([int]$Code, $Body) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = $Code; ContentType = 'application/json'; Body = ($Body | ConvertTo-Json -Compress) })
+}
 
-@app.route(route="erp/{op}", methods=["POST"])
-def relay(req: func.HttpRequest) -> func.HttpResponse:
-    op = req.route_params["op"]
-    try:
-        verify_signature(req)  # HMAC-SHA256 · 5-min window · nonce cache
-    except AuthError as e:
-        return reply(401, error="unauthorized", detail=str(e))
-    if op not in ALLOWED:
-        return reply(403, error="forbidden", detail=f"'{op}' is not allowlisted")
-    try:
-        body = req.get_json()
-        emp = str(body["id"]).strip().upper()
-    except (ValueError, KeyError, TypeError):
-        return reply(400, error="bad_request", detail="JSON body with 'id' required")
-    fields = {k: str(v).strip() for k, v in body.get("fields", {}).items() if k in EDITABLE}
+if (-not (Test-RelaySignature $Request)) {    # HMAC-SHA256 over RawBody · 5-min window · nonce cache
+    return Reply 401 ([ordered]@{ error = 'unauthorized'; detail = 'signature mismatch' })
+}
+$op = $Request.Params.op
+if (-not $Ops.ContainsKey($op)) {
+    return Reply 403 ([ordered]@{ error = 'forbidden'; detail = "'$op' is not allowlisted" })
+}
+$id = "$($Request.Body.id)".Trim().ToUpper()
+if (-not $id) { return Reply 400 ([ordered]@{ error = 'bad_request'; detail = "'id' is required" }) }
 
-    # erp_session(): OAuth client-credentials token + ETag / If-Match handling
-    r = erp_session().request(ALLOWED[op], ENTITY.format(id=emp), json=fields or None)
-    if r.status_code >= 500:
-        logging.error("upstream %s -> %s", op, r.status_code)
-        return reply(502, error="upstream_unavailable")
-    if not r.ok:
-        return reply(r.status_code, error="upstream_rejected")
-    return reply(200, status="ok", upstream=r.status_code, applied=sorted(fields))
+$fields = [ordered]@{}                          # allowlisted, trimmed fields only
+foreach ($f in $Editable) {
+    if ($Request.Body.fields.$f) { $fields[$f] = "$($Request.Body.fields.$f)".Trim() }
+}
+if ($op -eq 'employee.create') { $fields.Insert(0, 'EmpNo', $id) }
 
-def reply(code: int, **payload) -> func.HttpResponse:
-    return func.HttpResponse(json.dumps(payload), status_code=code, mimetype="application/json")`,
+$erp = @{
+    Uri                = if ($op -eq 'employee.create') { $Entity } else { "$Entity(EmpNo='$id')" }
+    Method             = $Ops[$op]
+    Headers            = Get-ErpHeaders $op $id  # OAuth client-credentials token + If-Match ETag
+    Body               = if ($fields.Count) { $fields | ConvertTo-Json } else { $null }
+    ContentType        = 'application/json'
+    SkipHttpErrorCheck = $true
+    TimeoutSec         = 20
+}
+try { $r = Invoke-WebRequest @erp }
+catch {
+    Write-Error "ERP unreachable ($op): $($_.Exception.Message)"
+    return Reply 502 @{ error = 'upstream_unavailable' }
+}
+if ($r.StatusCode -ge 500) { return Reply 502 @{ error = 'upstream_unavailable' } }
+if ($r.StatusCode -ge 400) { return Reply $r.StatusCode @{ error = 'upstream_rejected' } }
+
+# Relay the ERP's answer back to Okta
+$out = [ordered]@{ status = 'ok'; upstream = [int]$r.StatusCode }
+if ($fields.Count) { $out.applied = @($fields.Keys) }
+if ($r.Content)    { $out.data = $r.Content | ConvertFrom-Json | Select-Object EmpNo, Email, Status }
+Reply 200 $out`,
     run: [
-      { prompt: "$ ", cmd: "func start", lang: "sh" },
+      { prompt: "PS> ", cmd: "func start", lang: "sh" },
       { out: "Functions:", cls: "dim" },
-      { out: "        relay: [POST] http://localhost:7071/api/erp/{op}", cls: "dim" } ] },
+      { out: "        erp-relay: [POST] http://localhost:7071/api/erp/{op}", cls: "dim" } ] },
 
   { tab: "offboard/run.ps1", lang: "ps", code: String.raw`# Okta Workflows → Azure Function (PowerShell) · GCC High
 param($Request)
@@ -693,7 +709,7 @@ updateNav();
 
 /* Terminal: syntax highlighting */
 const HL = {
-  ps: { re: /(#.*$)|('[^']*'?|"[^"]*"?)|(\$[\w:]+)|\b(param|if|else|elseif|foreach|return|try|catch)\b|(\b[A-Z][A-Za-z]+-[A-Z][A-Za-z]+\b)|((?:^|\s)-[A-Za-z]+)|(\b\d[\d.]*\b)/g,
+  ps: { re: /(#.*$)|('[^']*'?|"[^"]*"?)|(\$[\w:]+)|\b(param|if|else|elseif|foreach|function|using|namespace|return|try|catch)\b|(\b[A-Z][A-Za-z]+-[A-Z][A-Za-z]+\b)|((?:^|\s)-[A-Za-z]+)|(\b\d[\d.]*\b)/g,
         cls: ["com","str","var","kw","fn","par","num"] },
   py: { re: /(#.*$)|(f?"[^"]*"?|'[^']*'?)|\b(import|from|def|return|if|raise|try|except|for|in|not|and|or|True|False|None|as|with)\b|(\b\d[\d.]*\b)|(\b[A-Za-z_]\w*(?=\())/g,
         cls: ["com","str","kw","num","fn"] },
