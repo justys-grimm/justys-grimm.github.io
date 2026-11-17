@@ -205,6 +205,10 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .case-link{display:inline-flex;align-items:center;gap:6px;margin:12px 0 2px;font-size:14px;font-weight:600;padding:6px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2)}
 .case-link:hover{border-color:var(--accent);text-decoration:none}
 
+/* decrypt game tiles */
+.w-t{display:inline-block;width:1.7em;text-align:center;border-radius:4px;margin-right:3px;font-weight:600;color:#fff}
+.w-hit{background:#238636}.w-near{background:#9e6a03}.w-miss{background:#30363d;color:#8b949e}
+
 /* Certifications */
 .cred .pill{display:block;width:fit-content;font-size:11px;font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:999px;margin:3px 0 2px;line-height:1.5;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .cred a.verify{font-size:13px;margin-left:6px}
@@ -854,7 +858,34 @@ function hl(src, lang) {
     "Change freeze: the calmest week of the year, right up until it isn't.",
     "The fastest way to find an undocumented dependency is to turn something off."
   ];
+  const WORDS = ["TOKEN","ADMIN","AUDIT","PROXY","SCOPE","AZURE","GRANT","ROUTE","CACHE","QUEUE","PATCH","SHELL",
+    "AGENT","CLAIM","GROUP","LOGIN","NONCE","ALERT","BLOCK","TRUST","VAULT","RELAY","REALM","FIELD","BATCH","ASSET",
+    "PHISH","SPOOF","PIVOT","CLOUD","DEBUG","MERGE","REGEX","ARRAY","CRASH","CRYPT","PORTS"]
+    .filter((w, i, a) => w.length === 5 && a.indexOf(w) === i);
+  const wscore = (guess, ans) => {                 // two passes so repeated letters are scored correctly
+    const res = Array(5).fill("miss"), left = {};
+    for (let i = 0; i < 5; i++) guess[i] === ans[i] ? res[i] = "hit" : left[ans[i]] = (left[ans[i]] || 0) + 1;
+    for (let i = 0; i < 5; i++) if (res[i] !== "hit" && left[guess[i]] > 0) { res[i] = "near"; left[guess[i]]--; }
+    return res;
+  };
   const GAMES = {
+    decrypt: ["crack a 5-letter IT word in 6 tries", () => {
+      const ans = pick(WORDS), seen = {}; let tries = 0;
+      out(dim("Crack the 5-letter IT/identity word in 6 tries."));
+      out(`<span class="w-t w-hit">A</span>${dim("right spot")}  <span class="w-t w-near">B</span>${dim("in the word")}  <span class="w-t w-miss">C</span>${dim("not in it")}`);
+      mode = { prompt: "decrypt> ", handle: raw => {
+        const g = raw.toUpperCase().replace(/\s+/g, "");
+        if (!/^[A-Z]{5}$/.test(g)) return out(dim("Five letters, please."));
+        tries++;
+        const res = wscore(g, ans), rank = { miss: 1, near: 2, hit: 3 };
+        res.forEach((r, i) => { if ((rank[r] || 0) > (rank[seen[g[i]]] || 0)) seen[g[i]] = r; });
+        out(res.map((r, i) => `<span class="w-t w-${r}" aria-label="${g[i]} ${r === "hit" ? "right spot" : r === "near" ? "in word" : "not in word"}">${g[i]}</span>`).join("") + "  " + dim(`${tries}/6`));
+        if (g === ans) { out(ok(`✓ Decrypted in ${tries}. ${["Did you read the source?", "Impressive.", "Nicely done.", "Solid.", "Close call.", "Phew."][tries - 1]}`)); mode = null; return; }
+        if (tries >= 6) { out(bad(`✗ Out of tries. It was ${ans}.`)); mode = null; return; }
+        const ruled = Object.keys(seen).filter(k => seen[k] === "miss").sort().join(" ");
+        if (ruled) out(dim(`ruled out: ${ruled}`));
+      } };
+    }],
     triage: ["allow or block? 5 sign-in events", () => {
       const deck = [...SIGNINS].sort(() => Math.random() - .5).slice(0, 5); let i = 0, score = 0;
       const ask = () => { out(""); out(`${h(`Event ${i + 1}/5`)}  ${esc(deck[i].e)}`); out(dim("allow or block? (a/b)")); };
