@@ -36,7 +36,7 @@
   <p>The ERP couldn't simply be connected to Okta:</p>
   <ul>
     <li><strong>It isn't reachable from the internet.</strong> It lives on an internal VLAN; Okta Workflows runs as SaaS outside that boundary.</li>
-    <li><strong>Its API is broad.</strong> The ERP's service interface can do far more than identity workflows should ever be allowed to do.</li>
+    <li><strong>It had no API to call.</strong> Our version of the ERP had no API layer, so an authorized professional-services partner built one exposing only create, get and update.</li>
     <li><strong>It's a regulated environment.</strong> Everything runs in Azure Government / GCC High, and anything that opens a path inward needs to hold up to review.</li>
   </ul>
 
