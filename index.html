@@ -201,6 +201,10 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .term-body a{color:#79c0ff}
 .term-note button{font:inherit;color:var(--accent-text);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 
+/* Case-study links */
+.case-link{display:inline-flex;align-items:center;gap:6px;margin:12px 0 2px;font-size:14px;font-weight:600;padding:6px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2)}
+.case-link:hover{border-color:var(--accent);text-decoration:none}
+
 /* Certifications */
 .cred .pill{display:block;width:fit-content;font-size:11px;font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:999px;margin:3px 0 2px;line-height:1.5;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .cred a.verify{font-size:13px;margin-left:6px}
@@ -252,7 +256,7 @@ footer a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
   html{scroll-padding:0}
   *,*::before,*::after{transition:none!important;animation:none!important}
   body{font-size:9.6pt;line-height:1.33;background:#fff;color:var(--text)}
-  .topbar,footer,#dots,.cmdk,.skip,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
+  .topbar,footer,#dots,.cmdk,.skip,.case-link,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
   main{display:block;max-width:none;padding:0}
   .cols,.col-main,.col-side{display:block;position:static}
   .module{opacity:1!important;transform:none!important;box-shadow:none;border:0;border-radius:0;padding:0;margin:0 0 9pt;background:none}
@@ -376,6 +380,7 @@ const RESUME = {
       company: "V2X (Vectrus)", start: "Mar 2022", end: "Present",
       roles: [
         { title: "Automation Engineer", start: "Oct 2025", end: "Present", location: "Remote",
+          caseStudy: { href: "cases/okta-erp-relay.html", label: "Case study: Okta to legacy ERP relay" },
           bullets: [
         "Led the initial Okta configuration and enterprise rollout for a 20,000-user organization, consolidating authentication for approximately 100 enterprise applications into Okta and establishing SSO, lifecycle management, and automated provisioning patterns across SaaS applications.",
         "Engineered a custom Azure Function API connecting Okta Workflows to legacy IFS ERP services; implemented allowlisted create, retrieve, and update operations, HMAC request validation, anti-replay timestamps, input normalization, and upstream error handling.",
@@ -401,6 +406,7 @@ const RESUME = {
         note: "Simplified view; component names are generic."
           } },
         { title: "Service Desk Engineer III", start: "Feb 2024", end: "Oct 2025", location: "Reston, VA",
+          caseStudy: { href: "cases/termination-automation.html", label: "Case study: automating termination review" },
           bullets: [
         "Replaced manual, multi-ticket termination review (~100 terminations per week at ~10 minutes each, roughly 16 staff-hours weekly) with automated processing that now needs only minutes of weekly oversight.",
         "Architected a GCC High termination-evidence platform using Azure Functions, Blob Storage, Event Grid, Storage Queues, Azure SQL, managed identities, and Power BI, with immutable evidence handling and controlled reporting access.",
@@ -614,6 +620,7 @@ const MODULES = {
               <div class="role-head"><b>${esc(ro.title)}</b>${ro.end==="Present"?'<span class="current">Current</span>':""}</div>
               <div class="role-meta"><span class="dates">${esc(ro.start)} — ${esc(ro.end)}</span> · ${esc(ro.location)}</div>
               ${ro.bullets ? `<ul>${ro.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}
+              ${ro.caseStudy ? `<a class="case-link" href="${esc(ro.caseStudy.href)}">${esc(ro.caseStudy.label)} <span aria-hidden="true">→</span></a>` : ""}
               ${ro.diagram ? renderDiagram(ro.diagram) : ""}
             </div>`).join("")}
           </div>
@@ -805,6 +812,8 @@ function hl(src, lang) {
     clearance: ["security clearance", () => out(`${h(R.clearance.name)}  ${esc(R.clearance.detail)}`)],
     certs: ["certifications", () => { if (!R.education.length) return out(dim("none listed yet")); R.education.forEach(e => out(`${h(e.name)}  ${dim(e.status === "in-progress" ? "in progress" : e.detail || "")}`)); }],
     contact: ["where to find me", () => R.contact.filter(c => !c.printOnly).forEach(c => out(c.href ? `${esc(c.label)}  <a href="${esc(c.href)}" target="_blank" rel="noopener">${esc(c.href)}</a>` : esc(c.label)))],
+    cases: ["case-study write-ups", () => R.experience.flatMap(j => j.roles).filter(r => r.caseStudy)
+      .forEach(r => out(`<a href="${esc(r.caseStudy.href)}">${esc(r.caseStudy.label)}</a>  ${dim(r.title)}`))],
     ls: ["list sample files", () => out(Object.keys(files).map(esc).join("   "))],
     cat: ["show a sample file: cat <file>", a => { const f = files[a[0]]; if (!f) return out(`<span class="t-err">cat: ${esc(a[0] || "")}: no such file</span> ${dim("(try ls)")}`); f.code.split("\n").forEach(l => out(hl(l, f.lang))); }],
     source: ["open this site's GitHub repo", () => { out(`<a href="${esc(R.repo)}" target="_blank" rel="noopener">${esc(R.repo)}</a>`); window.open(R.repo, "_blank", "noopener"); }],
@@ -883,6 +892,8 @@ function hl(src, lang) {
   const ACTIONS = [
     ...navOrder.map(k => ({ label: `Go to ${MODULES[k].title}`, hint: "Section", run: go(k) })),
     { label: "Back to top", hint: "Section", run: () => scrollTo({ top: 0, behavior: smooth }) },
+    ...RESUME.experience.flatMap(j => j.roles).filter(r => r.caseStudy)
+      .map(r => ({ label: r.caseStudy.label, hint: "Write-up", run: () => { location.href = r.caseStudy.href; } })),
     { label: "Open interactive shell", hint: "Terminal", run: () => window.openShell() },
     { label: "Download PDF resume", hint: "Print", run: () => setTimeout(() => window.print(), 50) },
     { label: "Toggle light / dark theme", hint: "Theme", run: () => document.getElementById("themeBtn").click() },

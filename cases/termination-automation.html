@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Termination Automation — Justys Grimm</title>
+<meta name="description" content="Case study: replacing roughly 16 staff-hours a week of manual termination review with automated, auditable processing in GCC High.">
+<meta property="og:title" content="Case study: automating termination review">
+<meta property="og:description" content="From ~16 staff-hours a week of manual tickets to minutes of oversight, with immutable audit evidence.">
+<meta property="og:image" content="https://justys-grimm.github.io/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-size='30' font-weight='700' fill='white' text-anchor='middle'%3EJG%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="case.css">
+<script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<nav class="bar" aria-label="Site"><div>
+  <a href="../">← Resume</a><span class="sp"></span>
+  <a href="okta-erp-relay.html">Next case study →</a>
+  <button id="theme" aria-label="Toggle theme">◐</button>
+</div></nav>
+
+<article>
+  <p class="kicker">Case study · Service Desk Engineer III → Automation Engineer, V2X</p>
+  <h1>From 16 hours of termination tickets to minutes of oversight</h1>
+  <p class="lede">Replacing a manual, multi-ticket termination review with automated processing, then building the
+  orchestration and audit-evidence pipeline around it in GCC High.</p>
+  <ul class="meta">
+    <li>PowerShell</li><li>Azure Functions</li><li>Azure Automation</li><li>Hybrid Worker</li><li>Active Directory</li><li>Okta Workflows</li><li>Azure SQL</li><li>Power BI</li>
+  </ul>
+
+  <h2>The problem</h2>
+  <p>Roughly <strong>100 terminations a week</strong> came through as tickets, and each one needed a manual review across
+  several tickets at about <strong>10 minutes apiece</strong>: around <strong>16 staff-hours every week</strong> spent on work
+  that was repetitive, easy to get slightly wrong, and important to get exactly right.</p>
+  <p>Termination is also one of the most audited identity processes there is. It isn't enough to disable the account;
+  you need to show when it happened and that it happened every time.</p>
+
+  <h2>The approach</h2>
+  <p><strong>First, automate the review.</strong> As a Service Desk Engineer III, I replaced the manual multi-ticket review with
+  automated processing, so people only look at the exceptions.</p>
+  <p><strong>Then, orchestrate the action.</strong> As an Automation Engineer, I built PowerShell Azure Function Apps that take
+  Okta-triggered termination requests, including privileged accounts, and hand them to Azure Automation runbooks on a
+  Hybrid Worker, which can reach on-premises Active Directory.</p>
+
+  <figure aria-label="Termination orchestration and evidence pipeline">
+    <p class="flow-label">Orchestrate</p>
+    <div class="flow">
+      <span class="node">Okta Workflows<small>termination trigger</small></span>
+      <span class="node key">Azure Function<small>PowerShell · OAuth 2.0</small></span>
+      <span class="node">ARM Jobs API<small>managed identity</small></span>
+      <span class="node">Hybrid Worker<small>runbook</small></span>
+      <span class="node">Active Directory<small>disable</small></span>
+    </div>
+    <p class="flow-label" style="margin-top:18px">Evidence</p>
+    <div class="flow">
+      <span class="node key">Blob Storage<small>immutable (WORM)</small></span>
+      <span class="node">Event Grid</span>
+      <span class="node">Storage Queue</span>
+      <span class="node">Azure Function<small>ingest</small></span>
+      <span class="node">Azure SQL</span>
+      <span class="node">Power BI<small>controlled access</small></span>
+    </div>
+    <figcaption>Simplified; component names are generic.</figcaption>
+  </figure>
+
+  <ul>
+    <li><strong>No stored passwords.</strong> The Function authenticates with a managed identity and OAuth 2.0 bearer tokens,
+      and starts runbook jobs through the Azure Resource Manager jobs API.</li>
+    <li><strong>The runbook runs where AD lives.</strong> A Hybrid Worker executes the disable on-premises, so the cloud side never
+      needs direct network access to domain controllers.</li>
+    <li><strong>Evidence can't be edited after the fact.</strong> Evidence lands in immutable (WORM) Blob Storage. Event Grid and
+      a Storage Queue feed an ingest Function that writes to Azure SQL, and Power BI reports on it with controlled access.</li>
+  </ul>
+
+  <h2>The result</h2>
+  <div class="result">
+    <div><b>~16 hrs/wk</b><span>of manual review removed</span></div>
+    <div><b>Minutes</b><span>of weekly oversight instead</span></div>
+    <div><b>Immutable</b><span>evidence for ITGC and audit</span></div>
+  </div>
+  <p>The weekly termination load went from hours of ticket review to a few minutes of oversight. Each termination now
+  follows the same path and leaves evidence that can't be quietly changed, which turns "prove it happened" from a
+  scramble into a report.</p>
+
+  <h2>What I'd tell the next engineer</h2>
+  <ul>
+    <li><strong>Automate the boring 95% and route the rest to a person.</strong> The goal is fewer, better human decisions, not none.</li>
+    <li><strong>Design the evidence with the automation.</strong> Adding audit trails afterwards is always harder and less trustworthy.</li>
+    <li><strong>Prefer identities over secrets.</strong> Managed identity removed a whole class of credential-rotation problems.</li>
+  </ul>
+
+  <p class="note">Details are generalized. No internal hostnames, network layout, tenant details or employer code appear here.</p>
+</article>
+<script>
+document.getElementById("theme").onclick=()=>{const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=d?"light":"dark";try{localStorage.setItem("theme",r.dataset.theme)}catch(e){}};
+</script>
+</body>
+</html>
