@@ -307,31 +307,24 @@ const RESUME = {
 /* Terminal tabs in the header. Illustrative, written for this site — fictional values only.
    code: typed into an editor view · run: commands ({prompt, cmd, lang}) and output ({out, cls}) */
 const TERM_SCRIPTS = [
-  { tab: "offboard/run.ps1", lang: "ps", code: String.raw`# Okta Workflows → Azure Function (PowerShell) · GCC High
-param($Request)
-$upn = $Request.Body.upn
-Connect-MgGraph -Identity -Environment USGov -NoWelcome
-$u = Get-MgUser -UserId $upn -Property Id,OnPremisesSyncEnabled
-
-if ($u.OnPremisesSyncEnabled) {
-    # AD is the source of authority → queue a runbook on the Hybrid Worker group
-    $arm = 'https://management.usgovcloudapi.net/'
-    $mi  = "$($env:IDENTITY_ENDPOINT)?resource=$arm&api-version=2019-08-01"
-    $tok = (Invoke-RestMethod $mi -Headers @{ 'X-IDENTITY-HEADER' = $env:IDENTITY_HEADER }).access_token
-    $job = @{ properties = @{
-        runbook = @{ name = 'Disable-ADUser' }; runOn = $env:HW_GROUP
-        parameters = @{ Upn = $upn } } } | ConvertTo-Json -Depth 4
-    $req = @{ Method = 'Put'; Body = $job; ContentType = 'application/json'
-        Uri = "$env:AA_URI/jobs/$(New-Guid)?api-version=2023-11-01"
-        Headers = @{ Authorization = "Bearer $tok" } }
-    Invoke-RestMethod @req | Out-Null
-} else {
-    Update-MgUser -UserId $u.Id -AccountEnabled:$false
-}
-# refresh tokens revoked; live access tokens run to expiry unless CAE applies
-Revoke-MgUserSignInSession -UserId $u.Id | Out-Null
-Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{ StatusCode = 202 })`,
-    run: [ { out: "Executed 'Functions.offboard' (Succeeded, Duration=742ms)", cls: "dim" } ] },
+  { tab: "requests.sh", lang: "sh", code: String.raw`# relay(): sign and send a request the same way the Okta Workflows card does
+relay() {
+  local op=$1 body=$2 ts sig
+  ts=$(date +%s)
+  sig=$(printf '%s.%s' "$ts" "$body" | openssl dgst -sha256 -hmac "$RELAY_SECRET" -r | cut -d' ' -f1)
+  [ -n "$SIG" ] && sig=$SIG   # forge a signature for testing
+  curl -s -w '  → HTTP %{http_code}\n' -X POST "$RELAY_URL/api/erp/$op" \
+    -H "x-functions-key: $FN_KEY" -H "X-Timestamp: $ts" -H "X-Signature: $sig" -d "$body"
+}`,
+    run: [
+      { prompt: "$ ", cmd: "source requests.sh && echo $RELAY_URL" },
+      { out: "https://erp-relay-fn.azurewebsites.us" },
+      { prompt: "$ ", cmd: "SIG=deadbeef relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\"a.smith@contoso.us\"}}'" },
+      { out: "{\"error\": \"unauthorized\", \"detail\": \"signature mismatch\"}  → HTTP 401", cls: "err" },
+      { prompt: "$ ", cmd: "relay employee.delete '{\"id\":\"e1042\"}'" },
+      { out: "{\"error\": \"forbidden\", \"detail\": \"'employee.delete' is not allowlisted\"}  → HTTP 403", cls: "err" },
+      { prompt: "$ ", cmd: "relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\" a.smith@contoso.us \",\"Salary\":\"999999\"}}'" },
+      { out: "{\"status\": \"ok\", \"upstream\": 204, \"applied\": [\"Email\"]}  → HTTP 200", cls: "ok" } ] },
 
   { tab: "erp_relay.py", lang: "py", code: String.raw`# Okta Workflows → IFS ERP relay · Python Azure Function (GCC High)
 import json, logging
@@ -376,24 +369,31 @@ def reply(code: int, **payload) -> func.HttpResponse:
       { out: "Functions:", cls: "dim" },
       { out: "        relay: [POST] http://localhost:7071/api/erp/{op}", cls: "dim" } ] },
 
-  { tab: "requests.sh", lang: "sh", code: String.raw`# relay(): sign and send a request the same way the Okta Workflows card does
-relay() {
-  local op=$1 body=$2 ts sig
-  ts=$(date +%s)
-  sig=$(printf '%s.%s' "$ts" "$body" | openssl dgst -sha256 -hmac "$RELAY_SECRET" -r | cut -d' ' -f1)
-  [ -n "$SIG" ] && sig=$SIG   # forge a signature for testing
-  curl -s -w '  → HTTP %{http_code}\n' -X POST "$RELAY_URL/api/erp/$op" \
-    -H "x-functions-key: $FN_KEY" -H "X-Timestamp: $ts" -H "X-Signature: $sig" -d "$body"
-}`,
-    run: [
-      { prompt: "$ ", cmd: "source requests.sh && echo $RELAY_URL" },
-      { out: "https://erp-relay-fn.azurewebsites.us" },
-      { prompt: "$ ", cmd: "SIG=deadbeef relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\"a.smith@contoso.us\"}}'" },
-      { out: "{\"error\": \"unauthorized\", \"detail\": \"signature mismatch\"}  → HTTP 401", cls: "err" },
-      { prompt: "$ ", cmd: "relay employee.delete '{\"id\":\"e1042\"}'" },
-      { out: "{\"error\": \"forbidden\", \"detail\": \"'employee.delete' is not allowlisted\"}  → HTTP 403", cls: "err" },
-      { prompt: "$ ", cmd: "relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\" a.smith@contoso.us \",\"Salary\":\"999999\"}}'" },
-      { out: "{\"status\": \"ok\", \"upstream\": 204, \"applied\": [\"Email\"]}  → HTTP 200", cls: "ok" } ] }
+  { tab: "offboard/run.ps1", lang: "ps", code: String.raw`# Okta Workflows → Azure Function (PowerShell) · GCC High
+param($Request)
+$upn = $Request.Body.upn
+Connect-MgGraph -Identity -Environment USGov -NoWelcome
+$u = Get-MgUser -UserId $upn -Property Id,OnPremisesSyncEnabled
+
+if ($u.OnPremisesSyncEnabled) {
+    # AD is the source of authority → queue a runbook on the Hybrid Worker group
+    $arm = 'https://management.usgovcloudapi.net/'
+    $mi  = "$($env:IDENTITY_ENDPOINT)?resource=$arm&api-version=2019-08-01"
+    $tok = (Invoke-RestMethod $mi -Headers @{ 'X-IDENTITY-HEADER' = $env:IDENTITY_HEADER }).access_token
+    $job = @{ properties = @{
+        runbook = @{ name = 'Disable-ADUser' }; runOn = $env:HW_GROUP
+        parameters = @{ Upn = $upn } } } | ConvertTo-Json -Depth 4
+    $req = @{ Method = 'Put'; Body = $job; ContentType = 'application/json'
+        Uri = "$env:AA_URI/jobs/$(New-Guid)?api-version=2023-11-01"
+        Headers = @{ Authorization = "Bearer $tok" } }
+    Invoke-RestMethod @req | Out-Null
+} else {
+    Update-MgUser -UserId $u.Id -AccountEnabled:$false
+}
+# refresh tokens revoked; live access tokens run to expiry unless CAE applies
+Revoke-MgUserSignInSession -UserId $u.Id | Out-Null
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{ StatusCode = 202 })`,
+    run: [ { out: "Executed 'Functions.offboard' (Succeeded, Duration=742ms)", cls: "dim" } ] }
 ];
 
 /* ============================================================
