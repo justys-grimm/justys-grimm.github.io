@@ -333,57 +333,67 @@ Revoke-MgUserSignInSession -UserId $u.Id | Out-Null
 Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{ StatusCode = 202 })`,
     run: [ { out: "Executed 'Functions.offboard' (Succeeded, Duration=742ms)", cls: "dim" } ] },
 
-  { tab: "hmac_gate.py", lang: "py", code: String.raw`# Guards the Okta Workflows → IFS ERP API (Python Azure Function)
-import hashlib, hmac, time
+  { tab: "erp_relay.py", lang: "py", code: String.raw`# Okta Workflows → IFS ERP relay · Python Azure Function (GCC High)
+import json, logging
 import azure.functions as func
+from shared import AuthError, verify_signature, erp_session
 
-WINDOW = 300  # seconds
+app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
-def verify(req: func.HttpRequest, secret: bytes, nonces) -> None:
+ENTITY = "EmployeeHandling.svc/Employees(EmpNo='{id}')"
+ALLOWED = {"employee.get": "GET", "employee.update": "PATCH"}  # op → method
+EDITABLE = {"Email", "Status", "SupervisorId"}
+
+@app.route(route="erp/{op}", methods=["POST"])
+def relay(req: func.HttpRequest) -> func.HttpResponse:
+    op = req.route_params["op"]
     try:
-        ts = int(req.headers.get("X-Timestamp", ""))
-    except ValueError:
-        raise PermissionError("missing or malformed timestamp")
-    if abs(time.time() - ts) > WINDOW:
-        raise PermissionError("timestamp outside window")
-    sig = req.headers.get("X-Signature", "")
-    msg = f"{ts}.".encode() + req.get_body()
-    want = hmac.new(secret, msg, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(want, sig):
-        raise PermissionError("signature mismatch")
-    # shared nonce store (Table / Redis) rejects replays inside the window
-    if not nonces.claim(sig, ttl=WINDOW):
-        raise PermissionError("replayed request")`,
+        verify_signature(req)  # HMAC-SHA256 · 5-min window · nonce cache
+    except AuthError as e:
+        return reply(401, error="unauthorized", detail=str(e))
+    if op not in ALLOWED:
+        return reply(403, error="forbidden", detail=f"'{op}' is not allowlisted")
+    try:
+        body = req.get_json()
+        emp = str(body["id"]).strip().upper()
+    except (ValueError, KeyError, TypeError):
+        return reply(400, error="bad_request", detail="JSON body with 'id' required")
+    fields = {k: str(v).strip() for k, v in body.get("fields", {}).items() if k in EDITABLE}
+
+    # erp_session(): OAuth client-credentials token + ETag / If-Match handling
+    r = erp_session().request(ALLOWED[op], ENTITY.format(id=emp), json=fields or None)
+    if r.status_code >= 500:
+        logging.error("upstream %s -> %s", op, r.status_code)
+        return reply(502, error="upstream_unavailable")
+    if not r.ok:
+        return reply(r.status_code, error="upstream_rejected")
+    return reply(200, status="ok", upstream=r.status_code, applied=sorted(fields))
+
+def reply(code: int, **payload) -> func.HttpResponse:
+    return func.HttpResponse(json.dumps(payload), status_code=code, mimetype="application/json")`,
     run: [
-      { prompt: "$ ", cmd: "pytest -q tests/test_hmac_gate.py", lang: "sh" },
-      { out: ".....                                        [100%]", cls: "ok" },
-      { out: "5 passed in 0.12s", cls: "ok" } ] },
+      { prompt: "$ ", cmd: "func start", lang: "sh" },
+      { out: "Functions:", cls: "dim" },
+      { out: "        relay: [POST] http://localhost:7071/api/erp/{op}", cls: "dim" } ] },
 
-  { tab: "evidence_writer.py", lang: "py", code: String.raw`# Termination evidence → immutable Blob storage · GCC High
-import json
-from datetime import datetime, timezone
-from azure.identity import ManagedIdentityCredential
-from azure.storage.blob import BlobServiceClient
-
-svc = BlobServiceClient(
-    "https://<account>.blob.core.usgovcloudapi.net",
-    credential=ManagedIdentityCredential(),
-)
-# container has a time-based immutability (WORM) policy: no edits, no deletes
-evidence = svc.get_container_client("termination-evidence")
-
-def record(event: dict) -> str:
-    event["captured_at"] = datetime.now(timezone.utc).isoformat()
-    name = f"{event['case_id']}/{event['step']}.json"
-    evidence.upload_blob(name, json.dumps(event, sort_keys=True), overwrite=False)
-    return name`,
+  { tab: "requests.sh", lang: "sh", code: String.raw`# relay(): sign and send a request the same way the Okta Workflows card does
+relay() {
+  local op=$1 body=$2 ts sig
+  ts=$(date +%s)
+  sig=$(printf '%s.%s' "$ts" "$body" | openssl dgst -sha256 -hmac "$RELAY_SECRET" -r | cut -d' ' -f1)
+  [ -n "$SIG" ] && sig=$SIG   # forge a signature for testing
+  curl -s -w '  → HTTP %{http_code}\n' -X POST "$RELAY_URL/api/erp/$op" \
+    -H "x-functions-key: $FN_KEY" -H "X-Timestamp: $ts" -H "X-Signature: $sig" -d "$body"
+}`,
     run: [
-      { prompt: "$ ", cmd: "python -i evidence_writer.py", lang: "sh" },
-      { prompt: ">>> ", cmd: "evt = {\"case_id\": \"T-0412\", \"step\": \"ad_disable\", \"result\": \"ok\"}", lang: "py" },
-      { prompt: ">>> ", cmd: "record(evt)", lang: "py" },
-      { out: "'T-0412/ad_disable.json'" },
-      { prompt: ">>> ", cmd: "record(evt)  # same step written twice", lang: "py" },
-      { out: "azure.core.exceptions.ResourceExistsError: The specified blob already exists.", cls: "err" } ] }
+      { prompt: "$ ", cmd: "source requests.sh && echo $RELAY_URL" },
+      { out: "https://erp-relay-fn.azurewebsites.us" },
+      { prompt: "$ ", cmd: "SIG=deadbeef relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\"a.smith@contoso.us\"}}'" },
+      { out: "{\"error\": \"unauthorized\", \"detail\": \"signature mismatch\"}  → HTTP 401", cls: "err" },
+      { prompt: "$ ", cmd: "relay employee.delete '{\"id\":\"e1042\"}'" },
+      { out: "{\"error\": \"forbidden\", \"detail\": \"'employee.delete' is not allowlisted\"}  → HTTP 403", cls: "err" },
+      { prompt: "$ ", cmd: "relay employee.update '{\"id\":\"e1042\",\"fields\":{\"Email\":\" a.smith@contoso.us \",\"Salary\":\"999999\"}}'" },
+      { out: "{\"status\": \"ok\", \"upstream\": 204, \"applied\": [\"Email\"]}  → HTTP 200", cls: "ok" } ] }
 ];
 
 /* ============================================================
@@ -535,7 +545,9 @@ const HL = {
   ps: { re: /(#.*$)|('[^']*'?|"[^"]*"?)|(\$[\w:]+)|\b(param|if|else|elseif|foreach|return|try|catch)\b|(\b[A-Z][A-Za-z]+-[A-Z][A-Za-z]+\b)|((?:^|\s)-[A-Za-z]+)|(\b\d[\d.]*\b)/g,
         cls: ["com","str","var","kw","fn","par","num"] },
   py: { re: /(#.*$)|(f?"[^"]*"?|'[^']*'?)|\b(import|from|def|return|if|raise|try|except|for|in|not|and|or|True|False|None|as|with)\b|(\b\d[\d.]*\b)|(\b[A-Za-z_]\w*(?=\())/g,
-        cls: ["com","str","kw","num","fn"] }
+        cls: ["com","str","kw","num","fn"] },
+  sh: { re: /(#.*$)|('[^']*'?|"[^"]*"?)|(\$\w+|\$\()|\b(local|if|then|fi|source|export|echo)\b|(\b(?:curl|openssl|printf|cut|date|func)\b)|((?:^|\s)-{1,2}[A-Za-z][\w-]*)/g,
+        cls: ["com","str","var","kw","fn","par"] }
 };
 function hl(src, lang) {
   if (!HL[lang]) return esc(src);
@@ -576,7 +588,7 @@ function hl(src, lang) {
     const s = TERM_SCRIPTS[i], live = () => id === run;
     tabs.forEach((t, k) => t.classList.toggle("on", k === i));
     body.innerHTML = "";
-    const code = s.code.split("\n");
+    const code = s.code ? s.code.split("\n") : [];
     for (let n = 0; n < code.length; n++) {
       if (!live()) return;
       const el = line(String(n + 1), "ln", "");
@@ -584,12 +596,12 @@ function hl(src, lang) {
       if (!live()) return;
       await sleep(code[n].trim() ? 90 : 40);
     }
-    line("", "", ""); await sleep(500);
+    if (code.length) { line("", "", ""); await sleep(500); }
     for (const r of s.run) {
       if (!live()) return;
       if (r.cmd !== undefined) {
         const el = line(`<span class="t-prompt">${esc(r.prompt)}</span>`, "", "");
-        await type(el, r.cmd, r.lang || s.lang, () => 22 + Math.random() * 40);
+        await type(el, r.cmd, r.lang || s.lang, () => 12 + Math.random() * 26);
         await sleep(450);
       } else {
         line("", "", `<span class="t-${r.cls || "out"}">${esc(r.out)}</span>`);
