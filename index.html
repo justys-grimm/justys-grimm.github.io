@@ -122,19 +122,25 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 
 /* Experience */
 .timeline{display:grid;gap:8px}
-.job{display:grid;grid-template-columns:170px minmax(0,1fr);gap:24px;padding:20px 0;border-top:1px solid var(--line)}
+.job{padding:22px 0;border-top:1px solid var(--line)}
 .job:first-child{border-top:0;padding-top:0}
-.job-meta{font-size:14px;color:var(--muted)}
-.job-meta .dates{font-family:var(--mono);font-size:12.5px;color:var(--text);display:block;margin-bottom:4px}
-.job h3{margin:0;font-size:19px;letter-spacing:-.01em}
-.job .org{color:var(--accent-text);font-weight:500;margin:2px 0 12px}
-.job ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.job-head{display:flex;justify-content:space-between;align-items:baseline;gap:4px 16px;flex-wrap:wrap}
+.job-head h3{margin:0;font-size:20px;letter-spacing:-.01em;color:var(--accent-text)}
+.dates{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.roles{margin:14px 0 0 5px;padding-left:22px;border-left:2px solid var(--line);display:grid;gap:22px}
+.role{position:relative}
+.role::before{content:"";position:absolute;left:-30px;top:.35em;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.role.compact::before{border-color:var(--muted)}
+.role-head b{font-size:16.5px;letter-spacing:-.01em}
+.role-meta{font-size:13.5px;color:var(--muted);margin-top:1px}
+.role.compact .role-head b{font-size:15px;font-weight:600}
+.job ul{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:10px}
 .job li{position:relative;padding-left:18px}
 .job li::before{content:"";position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:2px;background:var(--accent)}
 .current{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#16a34a;margin-left:8px}
 
 /* Architecture diagram */
-.arch{grid-column:1/-1;margin:4px 0 0;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:16px 18px}
+.arch{margin:16px 0 0;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:16px 18px}
 .arch-title{font-size:13px;font-weight:600;margin:0 0 12px}
 .lane{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:start;padding:8px 0}
 .lane + .lane{border-top:1px dashed var(--line)}
@@ -164,7 +170,8 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
 @media (max-width:860px){
   .skill-groups{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,1fr)}
-  .job{grid-template-columns:1fr;gap:6px}
+  .roles{padding-left:16px}
+  .role::before{left:-24px}
   .lane{grid-template-columns:1fr;gap:6px}
   .lane-label{padding-top:0}
   .flow{grid-auto-flow:row;gap:18px}
@@ -244,17 +251,21 @@ const RESUME = {
 
   experience: [
     {
-      company: "V2X (Vectrus)", location: "Reston, VA",
-      title: "Automation Engineer (IAM)", start: "March 2022", end: "Present",
-      bullets: [
+      company: "V2X (Vectrus)", start: "Mar 2022", end: "Present",
+      roles: [
+        { title: "Automation Engineer", start: "Oct 2025", end: "Present", location: "Remote",
+          bullets: [
         "Led the initial Okta configuration and enterprise rollout for a 20,000-user organization, consolidating authentication for approximately 100 enterprise applications into Okta and establishing SSO, lifecycle management, and automated provisioning patterns across SaaS applications.",
-        "Engineered a custom Azure Function API connecting Okta Workflows to legacy IFS ERP services; implemented allowlisted create, retrieve, and update operations, HMAC request validation, anti-replay timestamps, input normalization, and upstream error handling.",
+        "Engineered a custom Azure Function API connecting Okta Workflows to legacy IFS ERP services; implemented allowlisted create, retrieve, and update operations, HMAC request validation, anti-replay timestamps, input normalization, and upstream error handling."
+          ] },
+        { title: "Service Desk Engineer III", start: "Feb 2024", end: "Oct 2025", location: "Reston, VA",
+          bullets: [
         "Developed PowerShell Azure Function Apps that securely orchestrate Okta-triggered privileged-account termination requests into Azure Automation Hybrid Worker runbooks using OAuth 2.0 bearer tokens, managed identity, and Azure Resource Manager job APIs.",
         "Replaced manual, multi-ticket termination review (~100 terminations per week at ~10 minutes each, roughly 16 staff-hours weekly) with automated processing that now needs only minutes of weekly oversight.",
         "Architected a GCC High termination-evidence platform using Azure Functions, Blob Storage, Event Grid, Storage Queues, Azure SQL, managed identities, and Power BI, with immutable evidence handling and controlled reporting access.",
         "Led endpoint migration of approximately 4,000 devices from hybrid Microsoft Entra join to cloud-native Microsoft Entra join."
-      ],
-      diagram: {
+          ],
+          diagram: {
         title: "Termination automation & evidence pipeline · GCC High",
         lanes: [
           { label: "Orchestrate", nodes: [
@@ -272,17 +283,22 @@ const RESUME = {
             { name: "Power BI", note: "controlled access" } ] }
         ],
         note: "Simplified view; component names are generic."
-      }
+          } },
+        { title: "IT Help Desk Technician II", start: "Sep 2022", end: "Feb 2024", location: "Colorado Springs, CO" },
+        { title: "IT Help Desk", start: "Mar 2022", end: "Sep 2022", location: "Colorado Springs, CO" }
+      ]
     },
     {
-      company: "Tech Experts", location: "Colorado Springs, CO",
-      title: "Technical Support Engineer", start: "April 2021", end: "March 2022",
-      bullets: ["Supported GCC High and DoD Exchange environments and managed critical customer escalations through ticket-based support workflows."]
+      company: "Tech Experts", start: "Apr 2021", end: "Mar 2022",
+      roles: [
+        { title: "Technical Support Engineer", start: "Apr 2021", end: "Mar 2022", location: "Colorado Springs, CO",
+          bullets: ["Supported GCC High and DoD Exchange environments and managed critical customer escalations through ticket-based support workflows."] }
+      ]
     }
   ],
 
   clearance: { name: "TS/SCI", detail: "Adjudicated 03/24/2025" },
-  education: [ { name: "CompTIA A+", detail: "Certified 2020" } ],
+  education: [ /* e.g. { name: "CompTIA Security+", detail: "Certified 2027" } */ ],
 
   /* Module placement. top = full width; main = right column; side = left sidebar (stacks below main on smaller screens). */
   layout: { top: ["hero"], main: ["stats", "summary", "experience"], side: ["credentials", "skills"] }
@@ -435,20 +451,25 @@ const MODULES = {
       <h2>Professional Experience</h2>
       <div class="timeline">
         ${r.experience.map(j => `<article class="job">
-          <div class="job-meta"><span class="dates">${esc(j.start)} — ${esc(j.end)}</span>${esc(j.location)}</div>
-          <div>
-            <h3>${esc(j.title)}${j.end==="Present"?'<span class="current">Current</span>':""}</h3>
-            <div class="org">${esc(j.company)}</div>
-            <ul>${j.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+          <div class="job-head">
+            <h3>${esc(j.company)}</h3>
+            <span class="dates">${esc(j.start)} — ${esc(j.end)}${j.roles.length > 1 ? ` · ${j.roles.length} roles` : ""}</span>
           </div>
-          ${j.diagram ? renderDiagram(j.diagram) : ""}
+          <div class="roles">
+            ${j.roles.map(ro => `<div class="role${ro.bullets ? "" : " compact"}">
+              <div class="role-head"><b>${esc(ro.title)}</b>${ro.end==="Present"?'<span class="current">Current</span>':""}</div>
+              <div class="role-meta"><span class="dates">${esc(ro.start)} — ${esc(ro.end)}</span> · ${esc(ro.location)}</div>
+              ${ro.bullets ? `<ul>${ro.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}
+              ${ro.diagram ? renderDiagram(ro.diagram) : ""}
+            </div>`).join("")}
+          </div>
         </article>`).join("")}
       </div>
     </section>`},
 
-  credentials: { title: "Credentials", render: r => `
+  credentials: { title: "Clearance", render: r => `
     <section class="module" id="credentials">
-      <h2>Clearance &amp; Certs</h2>
+      <h2>${r.education.length ? "Clearance &amp; Certs" : "Clearance"}</h2>
       <div class="cred"><div class="cred-icon">${ICONS.shield}</div><div><b>${esc(r.clearance.name)}</b><span>${esc(r.clearance.detail)}</span></div></div>
       ${r.education.map(e => `<div class="cred"><div class="cred-icon">${ICONS.cert}</div><div><b>${esc(e.name)}</b><span>${esc(e.detail)}</span></div></div>`).join("")}
     </section>`},
