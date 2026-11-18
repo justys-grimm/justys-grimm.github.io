@@ -949,6 +949,9 @@ function hl(src, lang) {
     coin: ["flip a coin", () => out(h(Math.random() < .5 ? "Heads" : "Tails"))]
   };
   /* Honeypot: fake "secrets" that only turn up with ls -a. Values are deliberately not real-looking keys. */
+  const B62 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const junk = (n, set) => Array.from({ length: n }, () => set[Math.floor(Math.random() * set.length)]).join("");
+  const uuid = () => [8, 4, 4, 4, 12].map(n => junk(n, "0123456789abcdef")).join("-");
   const caught = file => {
     const d = new Date(), stamp = d.toISOString().replace(/\.\d+Z$/, "Z");
     out("");
@@ -959,16 +962,19 @@ function hl(src, lang) {
   };
   const HONEY = {
     ".env": () => {
-      ["# prod - do NOT commit", "OKTA_ORG_URL=https://totally-real.okta.example", "OKTA_API_TOKEN=nice-try-this-is-a-honeypot",
-       "ERP_RELAY_SECRET=hunter2", "AZURE_CLIENT_SECRET=correct-horse-battery-staple"].forEach(l => out(hl(l, "sh")));
+      ["# prod - do NOT commit", "OKTA_ORG_URL=https://relay-prod.okta.example", `OKTA_API_TOKEN=00${junk(40, B62 + "-_")}`,
+       `ERP_RELAY_SECRET=${junk(64, "0123456789abcdef")}`, `AZURE_TENANT_ID=${uuid()}`, `AZURE_CLIENT_ID=${uuid()}`,
+       `AZURE_CLIENT_SECRET=${junk(3, B62)}8Q~${junk(34, B62 + "~._-")}`].forEach(l => out(hl(l, "sh")));
       caught(".env");
     },
-    ".ssh": () => out(`cat: .ssh: Is a directory ${dim("(try cat .ssh/id_rsa)")}`),
+    ".ssh": () => out(bad("cat: .ssh: Is a directory")),
     ".ssh/": () => HONEY[".ssh"](),
     ".ssh/id_rsa": () => {
-      out("-----BEGIN HONEYPOT PRIVATE KEY-----");
-      out(dim("bm90IGEgcmVhbCBrZXkuIHlvdSBmb3VuZCB0aGUgaG9uZXlwb3Qu"));
-      out("-----END HONEYPOT PRIVATE KEY-----");
+      out("-----BEGIN OPENSSH PRIVATE KEY-----");
+      out(`b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW${junk(14, B62)}`);
+      for (let i = 0; i < 4; i++) out(junk(70, B62 + "+/"));
+      out(`${junk(18, B62)}==`);
+      out("-----END OPENSSH PRIVATE KEY-----");
       caught(".ssh/id_rsa");
     }
   };
@@ -1052,7 +1058,7 @@ function hl(src, lang) {
     if (R[cmd]) return out(esc(R[cmd]));
     if (cmd === "cat" && /^(\.\/|\/opt\/pingsvc\/)?flag\.txt$/.test(r[0] || "")) return out(esc(flag(1)));
     if (cmd === "cat" && /ping\.sh$/.test(r[0] || "")) return ['#!/bin/sh', '# usage: ping.sh <host>', 'sh -c "ping -c 1 $1"   # TODO: validate input'].forEach(l => out(hl(l, "sh")));
-    out(bad(`sh: ${cmd}: not available in this container`));
+    out(bad(`sh: 1: ${cmd}: not found`));
   };
   /* 3. JWT */
   const b64u = t => btoa(t).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -1084,7 +1090,7 @@ function hl(src, lang) {
       try { H = JSON.parse(unb64u(hd)); P = JSON.parse(unb64u(pl)); } catch (e) { return out(bad("401: malformed token")); }
       if (String(H.alg).toLowerCase() === "none") {
         if (P.role !== "admin") return out(bad(`403: role '${P.role}' is not admin`));
-        out(ok("Signature check skipped (alg: none). Welcome, admin."));
+        out(ok("200 OK · token accepted (alg: none, signature not verified) · role: admin"));
         return out(esc(flag(3)));
       }
       if (hd !== GUEST[0] || pl !== GUEST[1] || sig !== GUEST[2]) return out(bad("401: invalid signature"));
@@ -1117,7 +1123,7 @@ function hl(src, lang) {
       else if (c === "pwd") out("/root");
       else if (c === "ls") lsPath(r.find(x => !x.startsWith("-")) || "/root", true);
       else if (c === "cat" && r[0]) catPath(r[0].startsWith("/") || r[0].startsWith(".") ? r[0] : "/root/" + r[0], true);
-      else out(dim(`sh: ${c}: try id, ls, cat or exit`));
+      else if (c) out(bad(`sh: 1: ${c}: not found`));
     } };
   };
   const sudo = a => {
@@ -1128,7 +1134,7 @@ function hl(src, lang) {
       out(dim("(END)  q to quit"));
       mode = { prompt: ":", bye: "", handle: raw => {
         if (/^!\s*(\/bin\/)?(ba)?sh$/.test(raw.trim())) return rootShell();
-        if (raw.startsWith("!")) return out(dim(`${raw}: only a shell would be interesting here`));
+        if (raw.startsWith("!")) { out(bad(`sh: 1: ${raw.slice(1).trim().split(/\s+/)[0]}: not found`)); return out(dim("!done  (press RETURN)")); }
         out(dim("(END)  q to quit"));
       } };
       return;
@@ -1138,7 +1144,7 @@ function hl(src, lang) {
 
   const EGGS = {   // unlisted
     sudo: a => sudo(a),
-    rm: () => out("rm: this shell is read-only. Nice try, though.")
+    rm: a => out(bad(`rm: cannot remove '${a.filter(x => !x.startsWith("-"))[0] || "."}': Read-only file system`))
   };
   const prompt = () => {
     const row = line(`<span class="t-prompt">${esc(mode ? mode.prompt : "$ ")}</span>`, "", "");
