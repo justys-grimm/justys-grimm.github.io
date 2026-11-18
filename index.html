@@ -137,7 +137,9 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .job{padding:22px 0;border-top:1px solid var(--line)}
 .job:first-child{border-top:0;padding-top:0}
 .job-head{display:flex;justify-content:space-between;align-items:baseline;gap:4px 16px;flex-wrap:wrap}
-.job-head h3{margin:0;font-size:20px;letter-spacing:-.01em;color:var(--accent-text)}
+.job-head h3{margin:0;font-size:20px;letter-spacing:-.01em;color:var(--accent-text);display:flex;align-items:center;gap:10px}
+.co-logo{width:34px;height:34px;flex:none;border-radius:9px;background:#fff;border:1px solid var(--line);display:grid;place-items:center}
+.co-logo img{width:26px;height:26px;display:block}
 .dates{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 .roles{margin:14px 0 0 5px;padding-left:22px;border-left:2px solid var(--line);display:grid;gap:22px}
 .role{position:relative}
@@ -168,6 +170,9 @@ main{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:grid;gap:20px
 .cred{display:flex;align-items:center;gap:14px}
 .cred + .cred{margin-top:16px}
 .cred-icon{width:42px;height:42px;border-radius:11px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
+.cred-icon.brand{background:#fff;border:1px solid var(--line)}
+.cred-icon.brand img{width:28px;height:28px;object-fit:contain;display:block}
+.cred-icon.brand[style] img{width:34px}
 .cred b{display:block;line-height:1.3}
 .cred span{color:var(--muted);font-size:14px}
 
@@ -274,7 +279,7 @@ footer a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
   html{scroll-padding:0}
   *,*::before,*::after{transition:none!important;animation:none!important}
   body{font-size:9.6pt;line-height:1.33;background:#fff;color:var(--text)}
-  .topbar,footer,#dots,.cmdk,.skip,.fortune,.case-link,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
+  .topbar,footer,#dots,.cmdk,.skip,.fortune,.co-logo,.case-link,.term-wrap,.hero::before,.arch,.badge .dot,#credentials{display:none!important}
   main{display:block;max-width:none;padding:0}
   .cols,.col-main,.col-side{display:block;position:static}
   .module{opacity:1!important;transform:none!important;box-shadow:none;border:0;border-radius:0;padding:0;margin:0 0 9pt;background:none}
@@ -401,7 +406,7 @@ const RESUME = {
 
   experience: [
     {
-      company: "V2X (Vectrus)", start: "Mar 2022", end: "Present",
+      company: "V2X (Vectrus)", logo: "assets/logos/v2x.png", start: "Mar 2022", end: "Present",
       roles: [
         { title: "Automation Engineer", start: "Oct 2025", end: "Present", location: "Remote",
           caseStudy: { href: "cases/okta-erp-relay.html", label: "Case study: Okta to legacy ERP relay" },
@@ -441,7 +446,7 @@ const RESUME = {
       ]
     },
     {
-      company: "Tek Experts", start: "Apr 2021", end: "Mar 2022",
+      company: "Tek Experts", logo: "assets/logos/tek-experts.png", start: "Apr 2021", end: "Mar 2022",
       roles: [
         { title: "Technical Support Engineer", start: "Apr 2021", end: "Mar 2022", location: "Colorado Springs, CO",
           bullets: ["Supported GCC High and DoD Exchange environments and managed critical customer escalations through ticket-based support workflows."] }
@@ -452,8 +457,8 @@ const RESUME = {
   clearance: { name: "Active security clearance", detail: "Details available on request" },
   /* Certifications. status: "earned" (add verify: "https://..." for a Credly / MS Learn link) or "in-progress". */
   education: [
-    { name: "CompTIA Security+", detail: "Security fundamentals", status: "in-progress" },
-    { name: "Okta Certified Professional", detail: "Okta identity administration", status: "in-progress" }
+    { name: "CompTIA Security+", logo: "assets/logos/comptia.svg", detail: "Security fundamentals", status: "in-progress" },
+    { name: "Okta Certified Professional", logo: "assets/logos/okta.svg", logoBg: "#002879", detail: "Okta identity administration", status: "in-progress" }
   ],
   repo: "https://github.com/justys-grimm/justys-grimm.github.io",
 
@@ -636,7 +641,7 @@ const MODULES = {
       <div class="timeline">
         ${r.experience.map(j => `<article class="job${j.roles.length === 1 ? " single" : ""}">
           <div class="job-head">
-            <h3>${esc(j.company)}</h3>
+            <h3>${j.logo ? `<span class="co-logo"><img src="${esc(j.logo)}" alt="" width="28" height="28"></span>` : ""}${esc(j.company)}</h3>
             <span class="dates">${esc(j.start)} — ${esc(j.end)}${j.roles.length > 1 ? ` · ${j.roles.length} roles` : ""}</span>
           </div>
           <div class="roles">
@@ -656,7 +661,7 @@ const MODULES = {
     <section class="module" id="credentials">
       <h2>${r.education.length ? "Clearance &amp; Certs" : "Clearance"}</h2>
       <div class="cred"><div class="cred-icon">${ICONS.shield}</div><div><b>${esc(r.clearance.name)}</b><span>${esc(r.clearance.detail)}</span></div></div>
-      ${r.education.map(e => `<div class="cred"><div class="cred-icon">${ICONS.cert}</div><div><b>${esc(e.name)}${e.status === "in-progress" ? '<span class="pill">In progress</span>' : ""}</b><span>${esc(e.detail || "")}${e.verify ? `<a class="verify" href="${esc(e.verify)}" target="_blank" rel="noopener">Verify ↗</a>` : ""}</span></div></div>`).join("")}
+      ${r.education.map(e => `<div class="cred"><div class="cred-icon${e.logo ? " brand" : ""}"${e.logoBg ? ` style="background:${esc(e.logoBg)}"` : ""}>${e.logo ? `<img src="${esc(e.logo)}" alt="">` : ICONS.cert}</div><div><b>${esc(e.name)}${e.status === "in-progress" ? '<span class="pill">In progress</span>' : ""}</b><span>${esc(e.detail || "")}${e.verify ? `<a class="verify" href="${esc(e.verify)}" target="_blank" rel="noopener">Verify ↗</a>` : ""}</span></div></div>`).join("")}
     </section>`},
 
   skills: { title: "Skills", render: r => `
