@@ -847,11 +847,17 @@ function hl(src, lang) {
     contact: ["where to find me", () => R.contact.filter(c => !c.printOnly).forEach(c => out(c.href ? `${esc(c.label)}  <a href="${esc(c.href)}" target="_blank" rel="noopener">${esc(c.href)}</a>` : esc(c.label)))],
     cases: ["case-study write-ups", () => R.experience.flatMap(j => j.roles).filter(r => r.caseStudy)
       .forEach(r => out(`<a href="${esc(r.caseStudy.href)}">${esc(r.caseStudy.label)}</a>  ${dim(r.title)}`))],
-    ls: ["list sample files", a => out([...(/^-\w*a/.test(a[0] || "") ? [".env", ".ssh/"] : []), ...Object.keys(files)].map(esc).join("   "))],
-    cat: ["show a sample file: cat <file>", a => { if (HONEY[a[0]]) return HONEY[a[0]](); const f = files[a[0]]; if (!f) return out(`<span class="t-err">cat: ${esc(a[0] || "")}: no such file</span> ${dim("(try ls)")}`); f.code.split("\n").forEach(l => out(hl(l, f.lang))); }],
+    ls: ["list sample files", a => {
+      const path = a.find(x => !x.startsWith("-"));
+      if (path) return lsPath(path, false);
+      out([...(a.some(x => /^-\w*a/.test(x)) ? [".env", ".ssh/"] : []), ...Object.keys(files)].map(esc).join("   "));
+    }],
+    cat: ["show a sample file: cat <file>", a => { if (!a[0]) return out(dim("Usage: cat <file>  (try ls)")); if (HONEY[a[0]]) return HONEY[a[0]](); catPath(a[0], false); }],
     source: ["open this site's GitHub repo", () => { out(`<a href="${esc(R.repo)}" target="_blank" rel="noopener">${esc(R.repo)}</a>`); window.open(R.repo, "_blank", "noopener"); }],
     pdf: ["print / save as PDF", () => window.print()],
     theme: ["toggle light / dark page theme", () => document.getElementById("themeBtn").click()],
+    ctf: ["capture the flag: 5 vulnerable services", a => ctf(a)],
+    submit: ["submit a flag: submit FLAG{...}", a => submit(a)],
     games: ["a few small games", () => { Object.entries(GAMES).forEach(([k, [d]]) => out(`${h(k.padEnd(12))}${dim(d)}`)); out(dim("Type q to leave a game.")); }],
     clear: ["clear the screen", () => { body.innerHTML = ""; }],
     exit: ["back to the demo", () => start(0)]
@@ -964,8 +970,172 @@ function hl(src, lang) {
       caught();
     }
   };
+  /* ---------- CTF: deliberately vulnerable services. Entirely simulated in this page; nothing touches a real system. ---------- */
+  const FX = ["fW53cF9kbmFfZ25pcHtHQUxG", "fWVtb2hfaHNhbHNfdG9kX3RvZHtHQUxG", "fWh0dWFfdG9uX3NpX2Vub25fZ2xhe0dBTEY=",
+              "fXRvb3JfZXJvbV9zaV9zc2Vse0dBTEY=", "fTFfc2xhdXFlXzFfcm97R0FMRg=="];      // reversed + base64, so a grep for the flag format finds nothing
+  const flag = n => atob(FX[n - 1]).split("").reverse().join("");
+  let solved = []; try { solved = JSON.parse(localStorage.getItem("ctfSolved") || "[]"); } catch (e) {}
+  const CHAL = [
+    ["Ping service", "ping <host> runs a network check for you", ["The ping service builds a shell command from your input.", "Shells will run a second command after ; or &&.", "ping 127.0.0.1; ls"]],
+    ["File server", "cat reads more than the samples", ["Paths can climb out of the current directory.", "Try ls ../.. to see where you are.", "/etc/passwd lists the users. Whose home directory looks interesting?"]],
+    ["Auth tokens", "login hands out guest tokens; admin <token> checks them", ["The token is a JWT: header.payload.signature, each part base64url.", "Decode the header with base64 -d. What does alg control?", "Set the role to admin and the alg to none. The signature can be empty, but keep the trailing dot."]],
+    ["Privilege", "what is guest allowed to run as root?", ["sudo -l lists what you may run.", "Some pagers can run shell commands.", "Inside less, type !sh"]],
+    ["Directory", "lookup <EmpNo> searches the staff table", ["Look at the query it prints. Your input lands inside quotes.", "AND binds tighter than OR, so a plain ' OR '1'='1 still respects Visible = 1.", "End the query early with a comment: ' OR 1=1 --"]]
+  ];
+  const hintAt = {};
+  const save = () => { try { localStorage.setItem("ctfSolved", JSON.stringify(solved)); } catch (e) {} };
+  const ctf = a => {
+    if ((a[0] || "").toLowerCase() === "hint") {
+      const n = +a[1]; if (!CHAL[n - 1]) return out(dim("Usage: ctf hint <1-5>"));
+      const i = hintAt[n] = Math.min((hintAt[n] ?? -1) + 1, 2);
+      return out(`${h(`Hint ${i + 1}/3`)}  ${esc(CHAL[n - 1][2][i])}`);
+    }
+    if ((a[0] || "").toLowerCase() === "reset") { solved = []; save(); return out(dim("Progress cleared.")); }
+    out(h("Five deliberately vulnerable services. Everything is simulated in your browser."));
+    CHAL.forEach((c, i) => out(`${solved.includes(i + 1) ? ok("[x]") : dim("[ ]")} ${i + 1}. ${h(c[0].padEnd(14))}${dim(c[1])}`));
+    out(dim(`${solved.length}/5 found · submit FLAG{...} to score · ctf hint <n> for a nudge · base64 is available`));
+  };
+  const submit = a => {
+    const v = a.join(""), n = [1, 2, 3, 4, 5].find(i => flag(i) === v);
+    if (!n) return out(bad("✗ Not a flag. They look like FLAG{...}"));
+    if (solved.includes(n)) return out(dim(`Flag ${n} was already counted.`));
+    solved.push(n); save();
+    out(ok(`✓ Flag ${n}: ${CHAL[n - 1][0]}  (${solved.length}/5)`));
+    if (solved.length === 5) out(h("All five. Every one of these still shows up in real pentest reports."));
+  };
+
+  /* fake filesystem */
+  const CWD = "/home/guest/site";
+  const FS = {
+    "/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nguest:x:1000:1000:Guest:/home/guest:/bin/sh\nadmin:x:1001:1001:Site admin:/home/admin:/bin/bash\nsvc-relay:x:998:998:Relay service:/nonexistent:/usr/sbin/nologin",
+    "/etc/shadow": "root:*:20409:0:99999:7:::\nadmin:*:20409:0:99999:7:::\n# no hashes here. the flag is in /root",
+    "/etc/sudoers.d/guest": "guest ALL=(root) NOPASSWD: /usr/bin/less /var/log/relay.log   # CHG-2231: let guest read relay logs",
+    "/home/admin/notes.txt": () => `TODO\n- rotate the relay HMAC key (overdue)\n- stop leaving flags in home directories: ${flag(2)}\n- ask why the ping tool takes raw input`,
+    "/home/guest/.profile": "export PATH=/usr/local/bin:/usr/bin:/bin",
+    "/var/log/relay.log": "2026-11-03T08:14:22Z INFO  relay started (pid 4121)\n2026-11-03T08:14:25Z INFO  employee.get E1042 -> 200\n2026-11-03T08:16:02Z WARN  replayed nonce rejected (401)\n2026-11-03T08:21:47Z WARN  op employee.delete not allowlisted (403)\n2026-11-03T09:02:10Z INFO  sudoers: guest may now read this log as root (CHG-2231)",
+    "/root/flag.txt": () => `${flag(4)}\nRoot through a pager. GTFOBins lists dozens of binaries that do this.`
+  };
+  const ROOTONLY = p => p === "/root" || p.startsWith("/root/") || p === "/etc/shadow" || p.startsWith("/etc/sudoers");
+  const resolve = p => { const st = []; (p.startsWith("/") ? p : CWD + "/" + p).split("/").forEach(x => { if (!x || x === ".") return; x === ".." ? st.pop() : st.push(x); }); return "/" + st.join("/"); };
+  const allPaths = () => [...Object.keys(FS), ...Object.keys(files).map(f => CWD + "/" + f), CWD + "/.env", CWD + "/.ssh/id_rsa"];
+  const children = dir => {
+    const pre = dir === "/" ? "/" : dir + "/", kids = new Set();
+    allPaths().forEach(k => { if (k.startsWith(pre)) { const r = k.slice(pre.length); kids.add(r.includes("/") ? r.split("/")[0] + "/" : r); } });
+    return kids.size ? [...kids].sort() : null;
+  };
+  const lsPath = (arg, root) => {
+    const p = resolve(arg);
+    if (ROOTONLY(p) && !root && p !== "/etc/shadow") return out(bad(`ls: cannot open directory '${arg}': Permission denied`));
+    const k = children(p);
+    if (k) return out(k.map(esc).join("   "));
+    out(allPaths().includes(p) ? esc(arg) : bad(`ls: ${arg}: No such file or directory`));
+  };
+  const catPath = (arg, root) => {
+    const p = resolve(arg), rel = p.startsWith(CWD + "/") ? p.slice(CWD.length + 1) : null;
+    if (rel && HONEY[rel]) return HONEY[rel]();
+    if (rel && files[rel]) return files[rel].code.split("\n").forEach(l => out(hl(l, files[rel].lang)));
+    if (FS[p] !== undefined) {
+      if (ROOTONLY(p) && !root) return out(bad(`cat: ${arg}: Permission denied`));
+      const v = typeof FS[p] === "function" ? FS[p]() : FS[p];
+      return v.split("\n").forEach(l => out(esc(l)));
+    }
+    out(children(p) ? bad(`cat: ${arg}: Is a directory`) : `<span class="t-err">cat: ${esc(arg)}: No such file or directory</span> ${dim("(try ls)")}`);
+  };
+
+  /* 1. command injection */
+  const container = c => {
+    const [cmd, ...r] = c.split(/\s+/);
+    const R = { id: "uid=33(www-data) gid=33(www-data) groups=33(www-data)", whoami: "www-data", hostname: "pingsvc-7f9c", pwd: "/opt/pingsvc", ls: "flag.txt   ping.sh" };
+    if (!cmd) return;
+    if (R[cmd]) return out(esc(R[cmd]));
+    if (cmd === "cat" && /^(\.\/|\/opt\/pingsvc\/)?flag\.txt$/.test(r[0] || "")) return out(esc(flag(1)));
+    if (cmd === "cat" && /ping\.sh$/.test(r[0] || "")) return ['#!/bin/sh', '# usage: ping.sh <host>', 'sh -c "ping -c 1 $1"   # TODO: validate input'].forEach(l => out(hl(l, "sh")));
+    out(bad(`sh: ${cmd}: not available in this container`));
+  };
+  /* 3. JWT */
+  const b64u = t => btoa(t).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const unb64u = t => atob(t.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((t.length + 3) % 4));
+  const GUEST = [b64u('{"alg":"HS256","typ":"JWT"}'), b64u('{"sub":"guest","role":"guest","iss":"relay.example"}'), "q3Pp0Wk1oHn8yCq0f2V5xQe1Uu9mRk6vT4bZsJcL8dA"];
+  /* 5. SQL injection */
+  const STAFF = [
+    { EmpNo: "E1042", Name: "A. Smith", Dept: "IT", Visible: 1 }, { EmpNo: "E1077", Name: "J. Doe", Dept: "Finance", Visible: 1 },
+    { EmpNo: "E1101", Name: "M. Lee", Dept: "HR", Visible: 1 }, { EmpNo: "E1130", Name: "R. Patel", Dept: "Operations", Visible: 1 },
+    { EmpNo: "E0000", Name: "svc-ctf", Dept: null, Visible: 0 }
+  ];
+  const CTFC = {
+    ping: a => {
+      const raw = a.join(" "); if (!raw) return out(dim("Usage: ping <host>"));
+      out(dim(`$ sh -c "ping -c 1 ${raw}"`));
+      const parts = raw.split(/;|&&|\|\|?|\$\(|`|\)/), host = parts.shift().trim();
+      if (host) out(esc(`64 bytes from ${host}: icmp_seq=0 ttl=64 time=0.${10 + Math.floor(Math.random() * 80)} ms`));
+      parts.forEach(c => container(c.trim()));
+    },
+    login: a => {
+      if (a[0] && a[0] !== "guest") return out(bad(`login: ${a[0]}: only the guest account is self-service`));
+      out(`Logged in as ${h("guest")}. Your token:`);
+      out(esc(GUEST.join(".")));
+      out(dim("Use it: admin <token>"));
+    },
+    admin: a => {
+      const t = a.join(""); if (!t) return out(dim("Usage: admin <token>  (get one with login)"));
+      const [hd, pl, sig = ""] = t.split("."); let H, P;
+      try { H = JSON.parse(unb64u(hd)); P = JSON.parse(unb64u(pl)); } catch (e) { return out(bad("401: malformed token")); }
+      if (String(H.alg).toLowerCase() === "none") {
+        if (P.role !== "admin") return out(bad(`403: role '${P.role}' is not admin`));
+        out(ok("Signature check skipped (alg: none). Welcome, admin."));
+        return out(esc(flag(3)));
+      }
+      if (hd !== GUEST[0] || pl !== GUEST[1] || sig !== GUEST[2]) return out(bad("401: invalid signature"));
+      out(bad("403: role 'guest' is not admin"));
+    },
+    base64: a => {
+      try { out(esc(a[0] === "-d" ? unb64u(a.slice(1).join("")) : b64u(a.join(" ")))); }
+      catch (e) { out(bad("base64: invalid input")); }
+    },
+    lookup: a => {
+      const q = a.join(" "); if (!q) return out(dim("Usage: lookup <EmpNo>   e.g. lookup E1042"));
+      out(dim(`SELECT EmpNo, Name, Dept FROM staff WHERE EmpNo = '${q}' AND Visible = 1`));
+      const cut = q.split(/--|#/)[0], commented = cut !== q, quotes = 1 + (cut.match(/'/g) || []).length + (commented ? 0 : 1);
+      if (quotes % 2) return out(bad(`SQL error: unterminated string literal near '${cut.slice(cut.lastIndexOf("'"))}'`));
+      const id = cut.split("'")[0].trim().toUpperCase(), rest = cut.slice(cut.indexOf("'") + 1) + (commented ? "" : "'");
+      const t = /\bor\s+'?(\w+)'?\s*=\s*'?(\w+)'?/i.exec(rest), taut = t && t[1] === t[2];
+      const rows = taut ? STAFF.filter(r => commented || r.Visible) : STAFF.filter(r => r.EmpNo === id && (commented && cut.includes("'") || r.Visible));
+      if (!rows.length) return out(dim("0 rows"));
+      rows.forEach(r => out(`${h(r.EmpNo)}  ${esc(r.Name.padEnd(10))}${esc(r.Dept ?? flag(5))}`));
+      out(dim(`${rows.length} row${rows.length > 1 ? "s" : ""}`));
+    }
+  };
+  /* 4. sudo -> less -> !sh */
+  const rootShell = () => {
+    out(dim("(spawning /bin/sh as root)"));
+    mode = { prompt: "# ", bye: "logout", handle: raw => {
+      const [c, ...r] = raw.split(/\s+/);
+      if (c === "id") out("uid=0(root) gid=0(root) groups=0(root)");
+      else if (c === "whoami") out("root");
+      else if (c === "pwd") out("/root");
+      else if (c === "ls") lsPath(r.find(x => !x.startsWith("-")) || "/root", true);
+      else if (c === "cat" && r[0]) catPath(r[0].startsWith("/") || r[0].startsWith(".") ? r[0] : "/root/" + r[0], true);
+      else out(dim(`sh: ${c}: try id, ls, cat or exit`));
+    } };
+  };
+  const sudo = a => {
+    if (a[0] === "-l") { out("User guest may run the following commands on resume:"); out(esc("    (root) NOPASSWD: /usr/bin/less /var/log/relay.log")); return; }
+    if (/^(\/usr\/bin\/)?less$/.test(a[0] || "")) {
+      if (resolve(a[1] || "") !== "/var/log/relay.log") return out(bad(`Sorry, user guest is not allowed to execute '/usr/bin/less ${a.slice(1).join(" ")}' as root.`));
+      FS["/var/log/relay.log"].split("\n").forEach(l => out(esc(l)));
+      out(dim("(END)  q to quit"));
+      mode = { prompt: ":", bye: "", handle: raw => {
+        if (/^!\s*(\/bin\/)?(ba)?sh$/.test(raw.trim())) return rootShell();
+        if (raw.startsWith("!")) return out(dim(`${raw}: only a shell would be interesting here`));
+        out(dim("(END)  q to quit"));
+      } };
+      return;
+    }
+    out(`sudo: elevation requires an approved PIM request. ${dim(`Request #${1000 + Math.floor(Math.random() * 9000)} is pending approval.`)}`);
+  };
+
   const EGGS = {   // unlisted
-    sudo: () => out(`sudo: elevation requires an approved PIM request. ${dim(`Request #${1000 + Math.floor(Math.random() * 9000)} is pending approval.`)}`),
+    sudo: a => sudo(a),
     rm: () => out("rm: this shell is read-only. Nice try, though.")
   };
   const prompt = () => {
@@ -985,7 +1155,7 @@ function hl(src, lang) {
       if (e.key === "Tab" && inp.value.trim() && !mode) {
         e.preventDefault();
         const [c, ...rest] = inp.value.split(" ");
-        const pool = rest.length ? Object.keys(files) : [...Object.keys(CMDS), ...Object.keys(GAMES)], q = rest.length ? rest.join(" ") : c;
+        const pool = rest.length ? Object.keys(files) : [...Object.keys(CMDS), ...Object.keys(GAMES), ...Object.keys(CTFC)], q = rest.length ? rest.join(" ") : c;
         const m = pool.filter(k => k.startsWith(q));
         let pre = m[0] || ""; for (const k of m) while (!k.startsWith(pre)) pre = pre.slice(0, -1);
         if (m.length === 1) inp.value = rest.length ? `${c} ${m[0]}` : m[0] + " ";
@@ -998,13 +1168,14 @@ function hl(src, lang) {
       if (raw) { hist.push(raw); hi = hist.length; }
       const [cmd = "", ...args] = raw.split(/\s+/), name = cmd.toLowerCase();
       if (mode) {
-        if (/^(q|quit|exit)$/.test(name)) { mode = null; out(dim("Left the game.")); }
+        if (/^(q|quit|exit)$/.test(name)) { const bye = mode.bye ?? "Left the game."; mode = null; if (bye) out(dim(bye)); }
         else if (raw) mode.handle(raw);
         prompt(); body.scrollTop = body.scrollHeight; return;
       }
       if (name) {
         const c = CMDS[name] || GAMES[name];
         if (c) c[1](args);
+        else if (CTFC[name]) CTFC[name](args);
         else if (EGGS[name]) EGGS[name](args);
         else out(`<span class="t-err">${esc(cmd)}: command not found</span> ${dim("(try help)")}`);
       }
@@ -1019,7 +1190,7 @@ function hl(src, lang) {
     tabs.forEach(t => t.classList.remove("on")); shellTab.classList.add("on");
     pauseBtn.hidden = true; body.classList.add("live"); body.innerHTML = "";
     out(dim("Interactive shell. Type 'help' to list commands, 'exit' to return to the demo."));
-    out(`${dim("New:")} type ${h("decrypt")} ${dim("to crack a 5-letter IT word in 6 tries.")}`);
+    out(`${dim("New:")} type ${h("decrypt")} ${dim("to crack a 5-letter IT word in 6 tries, or")} ${h("ctf")} ${dim("to hunt for 5 flags.")}`);
     const inp = prompt();
     if (typeof cmd === "string") { inp.value = cmd; inp.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })); }
   };
