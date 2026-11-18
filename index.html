@@ -949,17 +949,19 @@ function hl(src, lang) {
     coin: ["flip a coin", () => out(h(Math.random() < .5 ? "Heads" : "Tails"))]
   };
   /* Honeypot: fake "secrets" that only turn up with ls -a. Values are deliberately not real-looking keys. */
-  const caught = () => {
+  const caught = file => {
+    const d = new Date(), stamp = d.toISOString().replace(/\.\d+Z$/, "Z");
     out("");
-    out(bad("🍯 Honeypot tripped."));
-    out(`Those aren't real. But poking at credential files on a box you just landed on is exactly what a real honeypot logs.`);
-    out(dim(`Alert #${10000 + Math.floor(Math.random() * 90000)} raised: "credential file access by unknown user". (Not really. Enjoy the site.)`));
+    out(bad("🍯 Honeypot tripped"));
+    out(`${h("ALERT")}  Unsecured Credentials: Credentials In Files (T1552.001) · severity ${h("high")}`);
+    out(dim(`${stamp} · host resume-shell-01 · user guest · file ~/site/${file} · decoy credential accessed`));
+    out(dim(`INC-${100000 + Math.floor(Math.random() * 900000)} opened · session flagged for review · on-call analyst paged (they were asleep)`));
   };
   const HONEY = {
     ".env": () => {
       ["# prod - do NOT commit", "OKTA_ORG_URL=https://totally-real.okta.example", "OKTA_API_TOKEN=nice-try-this-is-a-honeypot",
        "ERP_RELAY_SECRET=hunter2", "AZURE_CLIENT_SECRET=correct-horse-battery-staple"].forEach(l => out(hl(l, "sh")));
-      caught();
+      caught(".env");
     },
     ".ssh": () => out(`cat: .ssh: Is a directory ${dim("(try cat .ssh/id_rsa)")}`),
     ".ssh/": () => HONEY[".ssh"](),
@@ -967,7 +969,7 @@ function hl(src, lang) {
       out("-----BEGIN HONEYPOT PRIVATE KEY-----");
       out(dim("bm90IGEgcmVhbCBrZXkuIHlvdSBmb3VuZCB0aGUgaG9uZXlwb3Qu"));
       out("-----END HONEYPOT PRIVATE KEY-----");
-      caught();
+      caught(".ssh/id_rsa");
     }
   };
   /* ---------- CTF: deliberately vulnerable services. Entirely simulated in this page; nothing touches a real system. ---------- */
